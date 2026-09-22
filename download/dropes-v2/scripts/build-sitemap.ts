@@ -16,7 +16,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const productsPath = resolve(__dirname, '../src/data/products.json');
 const outPath = resolve(__dirname, '../public/sitemap.xml');
 
-const baseUrl = process.env.VITE_PUBLIC_SITE_URL ?? 'https://dropes.example.com';
+const baseUrl = process.env.VITE_PUBLIC_SITE_URL ?? 'https://eddyflores100-lang.github.io/dropes-v2';
 
 interface Product { id: string; }
 

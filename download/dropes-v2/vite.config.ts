@@ -3,11 +3,16 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 
-// https://vitejs.dev/config/
+// GitHub Pages serves at https://<user>.github.io/<repo>/
+// Vite needs `base` to match the repo path so asset URLs resolve correctly.
+// Override with VITE_BASE_PATH env var for custom subpaths or root domain.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+  const repoName = env.VITE_REPO_NAME ?? 'dropes-v2';
+  const base = env.VITE_BASE_PATH ?? `/${repoName}/`;
 
   return {
+    base,
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
@@ -15,11 +20,9 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      // Expose only VITE_ prefixed env vars to the client.
-      // The Dropea API key is intentionally exposed (public-facing dropship API);
-      // for a true production setup, proxy via a serverless function.
       'import.meta.env.VITE_DROPEA_API_KEY': JSON.stringify(env.VITE_DROPEA_API_KEY ?? ''),
       'import.meta.env.VITE_DROPEA_SHOP_ID': JSON.stringify(env.VITE_DROPEA_SHOP_ID ?? '12928'),
+      'import.meta.env.VITE_PUBLIC_SITE_URL': JSON.stringify(env.VITE_PUBLIC_SITE_URL ?? ''),
     },
     server: {
       port: 3000,
@@ -28,6 +31,7 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'es2022',
       sourcemap: false,
+      outDir: 'dist',
       rollupOptions: {
         output: {
           manualChunks: {

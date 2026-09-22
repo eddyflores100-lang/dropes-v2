@@ -6,13 +6,16 @@
   "description": "Dropes ecommerce - Refactored dropshipping store for ES/PT",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && tsx scripts/post-build.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "sync": "tsx --env-file=.env scripts/sync-dropea.ts",
-    "sitemap": "tsx scripts/build-sitemap.ts"
+    "sitemap": "tsx scripts/build-sitemap.ts",
+    "deploy": "npm run build && gh-pages -d dist -b gh-pages -m \"deploy: $(git rev-parse --short HEAD 2>/dev/null || echo manual)\"",
+    "deploy:force": "npm run build && gh-pages -d dist -b gh-pages --add --message \"deploy: force\""
   },
+  "homepage": "https://eddyflores100-lang.github.io/dropes-v2/",
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
@@ -28,6 +31,7 @@
     "@types/node": "^22.14.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "gh-pages": "^6.3.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2"

@@ -1,5 +1,5 @@
 User-agent: *
 Allow: /
 
-# Sitemap (set real domain in production)
-Sitemap: https://dropes.example.com/sitemap.xml
+# GitHub Pages URL
+Sitemap: https://eddyflores100-lang.github.io/dropes-v2/sitemap.xml
