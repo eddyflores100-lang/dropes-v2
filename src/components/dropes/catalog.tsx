@@ -1,13 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion } from "motion/react";
-import { SlidersHorizontal, X, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import Image from "next/image";
+import { ShoppingBag, Filter, ChevronDown } from "lucide-react";
 import type { Product, Category, SortOption } from "@/lib/types";
-import { ProductCard } from "./product-card";
+import { parsePrice, formatEuro, discountPercent } from "@/lib/format";
+import { useCart } from "@/lib/cart-store";
 
 interface CatalogProps {
   products: Product[];
@@ -26,296 +24,284 @@ const CATEGORIES: Array<Category | "Todas"> = [
 ];
 
 const SORTS: Array<{ value: SortOption; label: string }> = [
-  { value: "relevant", label: "Relevancia" },
-  { value: "price-asc", label: "Precio ↑" },
-  { value: "price-desc", label: "Precio ↓" },
+  { value: "relevant", label: "POPULARIDAD EN ESPAÑA" },
+  { value: "price-asc", label: "PRECIO ↑" },
+  { value: "price-desc", label: "PRECIO ↓" },
   { value: "name", label: "A → Z" },
 ];
 
-const PER_PAGE = 24;
+const PER_PAGE = 12;
+
+const TAG_COLORS: Record<string, string> = {
+  "TOP VENTAS": "bg-brand-red text-white",
+  "SUPER VENTAS": "bg-brand-yellow text-black",
+  PREMIUM: "bg-brand-black text-white",
+  INNOVACIÓN: "bg-brand-red text-white",
+  "CINE EN CASA": "bg-brand-yellow text-black",
+};
+
+const TAG2_COLORS: Record<string, string> = {
+  PREMIUM: "bg-brand-black text-white",
+  "COCINA PRO": "bg-brand-yellow text-black border border-black",
+  "BLUETOOTH 5.3": "bg-brand-cobalt text-white",
+  "ECO-TECH": "bg-emerald-600 text-white",
+  CONFORT: "bg-brand-black text-white",
+  SEGURIDAD: "bg-brand-red text-white",
+  DESCANSO: "bg-brand-black text-white",
+  "HD WIRELESS": "bg-brand-cobalt text-white",
+};
+
+function ProductCardBrutal({
+  product,
+  onOpen,
+  onBuy,
+  index,
+}: {
+  product: Product;
+  onOpen: (p: Product) => void;
+  onBuy: (p: Product) => void;
+  index: number;
+}) {
+  const [added, setAdded] = useState(false);
+  const price = parsePrice(product.priceNow);
+  const was = parsePrice(product.priceWas);
+  const discount = discountPercent(product.priceWas, product.priceNow);
+  const tagColor = TAG_COLORS[product.tag] || "bg-brand-red text-white";
+  const tag2Color = (product.tag2 && TAG2_COLORS[product.tag2]) || "bg-brand-black text-white";
+
+  const handleBuy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onBuy(product);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  };
+
+  return (
+    <div className="bg-brand-cream brutal-border p-4 shadow-brutal hover:shadow-brutal-lg transition-all flex flex-col justify-between group">
+      <div>
+        <div
+          className="relative aspect-square w-full brutal-border bg-white overflow-hidden mb-3 cursor-pointer"
+          onClick={() => onOpen(product)}
+        >
+          <Image
+            src={product.image}
+            alt={product.name}
+            fill
+            unoptimized
+            referrerPolicy="no-referrer"
+            sizes="(max-width: 768px) 50vw, 25vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+          {product.tag && (
+            <span className={`absolute top-2 left-2 ${tagColor} font-mono font-black text-[10px] px-2 py-0.5 brutal-border uppercase`}>
+              {product.tag}
+            </span>
+          )}
+          {product.tag2 && (
+            <span className={`absolute top-2 right-2 ${tag2Color} font-mono font-bold text-[10px] px-2 py-0.5`}>
+              {product.tag2}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 text-amber-500 mb-1 font-mono text-xs font-bold">
+          <span>★★★★★</span>
+          <span className="text-gray-500 text-[11px]">({product.reviews.replace("opiniones", "REVIEWS")})</span>
+        </div>
+
+        <h3 className="font-headline font-black text-base uppercase text-brand-black line-clamp-2 leading-tight cursor-pointer" onClick={() => onOpen(product)}>
+          {product.name}
+        </h3>
+      </div>
+
+      <div className="pt-4 mt-auto">
+        <div className="flex items-baseline gap-2 mb-3">
+          <span className="font-display font-black text-2xl text-brand-black">{formatEuro(price)}€</span>
+          {was > 0 && <span className="font-mono text-xs text-gray-500 line-through">{formatEuro(was)}€</span>}
+          {discount > 0 && (
+            <span className="font-mono text-[10px] font-black bg-brand-yellow px-1 border border-black">-{discount}%</span>
+          )}
+        </div>
+        <button
+          onClick={handleBuy}
+          className={`w-full ${added ? "bg-emerald-600" : "bg-brand-black hover:bg-brand-red"} text-white brutal-border py-2.5 font-headline font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors`}
+        >
+          {added ? (
+            <>✓ ¡AÑADIDO AL PEDIDO!</>
+          ) : (
+            <>
+              <ShoppingBag className="text-base" />
+              <span>PEDIR CONTRA REEMBOLSO</span>
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function Catalog({ products, onOpen, selectedCategory }: CatalogProps) {
-  const [category, setCategory] = useState<Category | "Todas">(
-    selectedCategory ?? "Todas"
-  );
+  const [category, setCategory] = useState<Category | "Todas">(selectedCategory ?? "Todas");
   const [sort, setSort] = useState<SortOption>("relevant");
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+
+  const add = useCart((s) => s.add);
 
   const filtered = useMemo(() => {
     let result = [...products];
     if (category !== "Todas") {
       result = result.filter((p) => p.category === category);
     }
-    if (sort === "price-asc") {
-      result.sort((a, b) => parseFloat(a.priceNow) - parseFloat(b.priceNow));
-    } else if (sort === "price-desc") {
-      result.sort((a, b) => parseFloat(b.priceNow) - parseFloat(a.priceNow));
-    } else if (sort === "name") {
-      result.sort((a, b) => a.name.localeCompare(b.name));
-    }
+    if (sort === "price-asc") result.sort((a, b) => parseFloat(a.priceNow) - parseFloat(b.priceNow));
+    else if (sort === "price-desc") result.sort((a, b) => parseFloat(b.priceNow) - parseFloat(a.priceNow));
+    else if (sort === "name") result.sort((a, b) => a.name.localeCompare(b.name));
     return result;
   }, [products, category, sort]);
 
   const totalPages = Math.ceil(filtered.length / PER_PAGE);
   const displayed = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  const handleCategory = (c: Category | "Todas") => {
-    setCategory(c);
-    setPage(1);
-    setShowFilters(false);
-  };
-
   return (
-    <section id="catalogo" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-      <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Catálogo
-          </p>
-          <h2 className="font-display text-4xl tracking-tight text-foreground sm:text-5xl">
-            {category === "Todas" ? (
-              <>
-                Todas las <span className="font-display-italic text-clay-700">piezas</span>
-              </>
-            ) : (
-              category
-            )}
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {filtered.length} {filtered.length === 1 ? "pieza" : "piezas"}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* mobile filter toggle */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="lg:hidden"
-            onClick={() => setShowFilters(true)}
-          >
-            <SlidersHorizontal className="mr-2 h-4 w-4" />
-            Filtros
-          </Button>
-
-          {/* desktop sort */}
-          <div className="relative hidden lg:block">
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortOption)}
-              className="appearance-none rounded-full border border-border bg-background py-2 pl-4 pr-10 text-sm font-medium text-foreground outline-none transition-colors hover:bg-clay-50"
-            >
-              {SORTS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+    <section className="w-full py-16 bg-brand-purewhite brutal-border-b" id="catalogo">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-brand-yellow font-mono text-xs font-black uppercase px-3 py-1 brutal-border mb-3">
+              <span>CATÁLOGO OFICIAL 2026</span>
+              <span>•</span>
+              <span>LOS MÁS DESEADOS</span>
+            </div>
+            <h2 className="font-display font-black text-4xl sm:text-6xl lg:text-7xl text-brand-black uppercase tracking-tight leading-none">
+              LOS MÁS VENDIDOS <span className="text-brand-red italic">DEL MES.</span>
+            </h2>
           </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[200px_1fr]">
-        {/* Desktop sidebar */}
-        <aside className="hidden lg:block">
-          <div className="sticky top-24">
-            <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-              Categorías
-            </h3>
-            <ul className="space-y-1">
-              {CATEGORIES.map((c) => (
-                <li key={c}>
-                  <button
-                    onClick={() => handleCategory(c)}
-                    className={cn(
-                      "w-full rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                      category === c
-                        ? "bg-foreground text-background"
-                        : "text-foreground hover:bg-clay-50"
-                    )}
-                  >
-                    {c}
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-8">
-              <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                Ordenar
-              </h3>
-              <ul className="space-y-1">
-                {SORTS.map((s) => (
-                  <li key={s.value}>
-                    <button
-                      onClick={() => setSort(s.value)}
-                      className={cn(
-                        "w-full rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                        sort === s.value
-                          ? "font-medium text-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {s.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="lg:hidden font-mono text-xs font-bold uppercase bg-brand-cream brutal-border px-3 py-2 shadow-brutal flex items-center gap-2"
+            >
+              <Filter className="text-sm" />
+              FILTROS
+            </button>
+            <div className="hidden lg:flex items-center gap-3">
+              <span className="font-mono text-xs font-bold uppercase bg-brand-cream brutal-border px-3 py-2">
+                ORDENADO POR: {SORTS.find((s) => s.value === sort)?.label}
+              </span>
+              <div className="relative">
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as SortOption)}
+                  className="appearance-none bg-brand-purewhite brutal-border px-3 py-2 pr-8 font-mono text-xs font-bold uppercase shadow-brutal focus:outline-none cursor-pointer"
+                >
+                  {SORTS.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
           </div>
-        </aside>
+        </div>
+
+        {/* Category pills */}
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-8 no-scrollbar">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c}
+              onClick={() => {
+                setCategory(c);
+                setPage(1);
+              }}
+              className={`shrink-0 font-mono text-xs font-black uppercase px-4 py-2 brutal-border transition-all ${
+                category === c
+                  ? "bg-brand-red text-brand-purewhite shadow-brutal"
+                  : "bg-brand-cream text-brand-black hover:bg-brand-yellow"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+
+        {/* Mobile filters */}
+        {showFilters && (
+          <div className="lg:hidden mb-8 p-4 bg-brand-cream brutal-border shadow-brutal space-y-3">
+            <div>
+              <p className="font-mono text-xs font-black uppercase mb-2">ORDENAR POR:</p>
+              <div className="flex flex-wrap gap-2">
+                {SORTS.map((s) => (
+                  <button
+                    key={s.value}
+                    onClick={() => setSort(s.value)}
+                    className={`font-mono text-xs font-bold uppercase px-3 py-1.5 brutal-border ${
+                      sort === s.value ? "bg-brand-black text-white" : "bg-white"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Grid */}
-        <div>
-          {displayed.length === 0 ? (
-            <div className="grid place-items-center py-20 text-center">
-              <p className="font-display text-2xl text-muted-foreground">
-                Sin resultados
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Prueba con otra categoría.
-              </p>
-            </div>
-          ) : (
-            <motion.div
-              layout
-              className="grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-6 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4"
-            >
-              {displayed.map((p, i) => (
-                <ProductCard
-                  key={p.id}
-                  product={p}
-                  index={i}
-                  onOpen={onOpen}
-                />
-              ))}
-            </motion.div>
-          )}
+        {displayed.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="font-display font-black text-3xl text-brand-black uppercase">Sin resultados</p>
+            <p className="font-mono text-sm text-gray-600 mt-2">Prueba con otra categoría</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {displayed.map((p, i) => (
+              <ProductCardBrutal
+                key={p.id}
+                product={p}
+                onOpen={onOpen}
+                onBuy={(prod) => add(prod)}
+                index={i}
+              />
+            ))}
+          </div>
+        )}
 
-          {totalPages > 1 && (
-            <div className="mt-16 flex items-center justify-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Anterior
-              </Button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }).slice(0, 7).map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setPage(i + 1)}
-                    className={cn(
-                      "grid h-9 w-9 place-items-center rounded-full text-sm transition-colors",
-                      page === i + 1
-                        ? "bg-foreground text-background"
-                        : "text-foreground hover:bg-clay-50"
-                    )}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-                {totalPages > 7 && (
-                  <>
-                    <span className="px-1 text-muted-foreground">…</span>
-                    <button
-                      onClick={() => setPage(totalPages)}
-                      className="grid h-9 w-9 place-items-center rounded-full text-sm hover:bg-clay-50"
-                    >
-                      {totalPages}
-                    </button>
-                  </>
-                )}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-              >
-                Siguiente
-              </Button>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-12 flex items-center justify-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="font-mono text-xs font-black uppercase px-4 py-2 brutal-border bg-brand-cream shadow-brutal disabled:opacity-40 hover:bg-brand-yellow transition-colors"
+            >
+              ← ANTERIOR
+            </button>
+            <div className="flex gap-1">
+              {Array.from({ length: Math.min(totalPages, 7) }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPage(i + 1)}
+                  className={`w-10 h-10 font-mono text-xs font-black brutal-border ${
+                    page === i + 1
+                      ? "bg-brand-red text-white shadow-brutal"
+                      : "bg-brand-cream hover:bg-brand-yellow"
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
             </div>
-          )}
-        </div>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="font-mono text-xs font-black uppercase px-4 py-2 brutal-border bg-brand-cream shadow-brutal disabled:opacity-40 hover:bg-brand-yellow transition-colors"
+            >
+              SIGUIENTE →
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* Mobile filter drawer */}
-      {showFilters && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 bg-foreground/20 backdrop-blur-sm"
-            onClick={() => setShowFilters(false)}
-          />
-          <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-3xl bg-background p-6"
-          >
-            <div className="mb-6 flex items-center justify-between">
-              <h3 className="font-display text-xl">Filtros</h3>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="grid h-10 w-10 place-items-center rounded-full hover:bg-clay-50"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <h4 className="mb-3 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-              Categorías
-            </h4>
-            <div className="mb-6 flex flex-wrap gap-2">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => handleCategory(c)}
-                  className={cn(
-                    "rounded-full border px-4 py-2 text-sm transition-colors",
-                    category === c
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border text-foreground hover:bg-clay-50"
-                  )}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-
-            <h4 className="mb-3 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-              Ordenar
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {SORTS.map((s) => (
-                <button
-                  key={s.value}
-                  onClick={() => setSort(s.value)}
-                  className={cn(
-                    "rounded-full border px-4 py-2 text-sm transition-colors",
-                    sort === s.value
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border text-foreground hover:bg-clay-50"
-                  )}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-
-            <Button
-              className="mt-8 w-full justify-center"
-              onClick={() => setShowFilters(false)}
-            >
-              Ver {filtered.length} piezas
-            </Button>
-          </motion.div>
-        </div>
-      )}
     </section>
   );
 }

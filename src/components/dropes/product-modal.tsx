@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
-import { X, Heart, ShoppingBag, Truck, Shield, RotateCcw, Minus, Plus, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "motion/react";
+import { X, Heart, ShoppingBag, Truck, Shield, RotateCcw, Minus, Plus, Star } from "lucide-react";
 import type { Product } from "@/lib/types";
-import { parsePrice, formatEuro, discountPercent, relatedProducts } from "@/lib/format";
+import { parsePrice, formatEuro, discountPercent } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
 import productsData from "@/data/products.json";
 
@@ -36,14 +33,14 @@ export function ProductModal({ product, onClose, onOpenProduct }: ProductModalPr
     return () => {
       document.body.style.overflow = "";
     };
-  }, [product, setQty]);
+  }, [product]);
 
   if (!product) return null;
 
   const price = parsePrice(product.priceNow);
   const was = parsePrice(product.priceWas);
   const discount = discountPercent(product.priceWas, product.priceNow);
-  const related = relatedProducts(ALL_PRODUCTS, product, 4);
+  const related = ALL_PRODUCTS.filter((p) => p.id !== product.id && p.category === product.category).slice(0, 4);
 
   return (
     <AnimatePresence>
@@ -52,29 +49,29 @@ export function ProductModal({ product, onClose, onOpenProduct }: ProductModalPr
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] overflow-y-auto bg-background/80 backdrop-blur-md"
+          className="fixed inset-0 z-[100] overflow-y-auto bg-brand-black/50 backdrop-blur-sm"
           onClick={onClose}
         >
           <motion.div
-            initial={{ scale: 0.96, opacity: 0, y: 20 }}
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.96, opacity: 0, y: 20 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="relative mx-auto my-4 min-h-[calc(100vh-2rem)] max-w-6xl rounded-3xl border border-border bg-background shadow-2xl sm:my-8"
+            className="relative mx-auto my-4 max-w-5xl bg-brand-cream brutal-border shadow-brutal-xl sm:my-8"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button */}
+            {/* Close */}
             <button
               onClick={onClose}
-              className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-background/80 backdrop-blur transition-colors hover:bg-clay-50"
+              className="absolute right-4 top-4 z-10 w-10 h-10 bg-brand-purewhite brutal-border flex items-center justify-center shadow-brutal hover:bg-brand-yellow transition-colors"
               aria-label="Cerrar"
             >
-              <X className="h-5 w-5" />
+              <X />
             </button>
 
-            <div className="grid grid-cols-1 gap-8 p-4 sm:p-6 md:grid-cols-2 md:gap-10 md:p-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
               {/* Image */}
-              <div className="relative aspect-square overflow-hidden rounded-2xl bg-clay-50">
+              <div className="relative aspect-square bg-brand-purewhite brutal-border-r overflow-hidden">
                 <Image
                   src={product.image}
                   alt={product.name}
@@ -85,117 +82,114 @@ export function ProductModal({ product, onClose, onOpenProduct }: ProductModalPr
                   className="object-contain p-10"
                 />
                 {discount > 0 && (
-                  <span className="absolute left-4 top-4 rounded-full bg-clay-600 px-3 py-1 text-[11px] font-medium text-white">
-                    −{discount}%
+                  <span className="absolute top-4 left-4 bg-brand-red text-white font-mono font-black text-xs px-3 py-1 brutal-border">
+                    -{discount}% DTO
                   </span>
                 )}
               </div>
 
               {/* Info */}
-              <div className="flex flex-col">
-                <div className="flex items-center gap-3">
-                  <Badge variant="secondary" className="rounded-full text-[10px] uppercase tracking-wider">
-                    {product.category}
-                  </Badge>
+              <div className="p-6 sm:p-8 flex flex-col">
+                <div className="flex items-center gap-2 mb-2">
                   {product.tag && (
-                    <Badge variant="outline" className="rounded-full text-[10px] uppercase tracking-wider">
+                    <span className="bg-brand-red text-white font-mono font-black text-[10px] px-2 py-1 brutal-border uppercase">
                       {product.tag}
-                    </Badge>
+                    </span>
                   )}
+                  <span className="font-mono text-[10px] font-bold uppercase bg-brand-yellow text-black px-2 py-1 brutal-border">
+                    {product.category}
+                  </span>
                 </div>
 
-                <h1 className="mt-4 font-display text-3xl leading-tight tracking-tight text-foreground sm:text-4xl">
+                <h1 className="font-display font-black text-3xl sm:text-4xl uppercase tracking-tight text-brand-black leading-tight">
                   {product.name}
                 </h1>
 
-                <div className="mt-3 flex items-center gap-3 text-sm text-muted-foreground">
-                  <span className="text-clay-600">★ {product.stars}</span>
-                  <span>·</span>
-                  <span>{product.reviews}</span>
+                <div className="mt-3 flex items-center gap-2">
+                  <div className="flex text-amber-500">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-current" />
+                    ))}
+                  </div>
+                  <span className="font-mono text-xs font-bold text-gray-600">
+                    {product.stars} · {product.reviews}
+                  </span>
                 </div>
 
                 <div className="mt-6 flex items-baseline gap-3">
-                  <span className="font-display text-4xl text-foreground">
+                  <span className="font-display font-black text-4xl text-brand-black">
                     {formatEuro(price * qty)}€
                   </span>
                   {was > 0 && (
-                    <span className="text-base text-muted-foreground line-through">
+                    <span className="font-mono text-base text-gray-500 line-through">
                       {formatEuro(was * qty)}€
                     </span>
                   )}
                   {discount > 0 && (
-                    <span className="rounded-full bg-clay-100 px-2 py-0.5 text-[11px] font-medium text-clay-700">
-                      Ahorras {formatEuro((was - price) * qty)}€
+                    <span className="font-mono text-xs font-black bg-brand-yellow text-black px-2 py-0.5 brutal-border">
+                      AHORRO {formatEuro((was - price) * qty)}€
                     </span>
                   )}
                 </div>
 
-                <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
-                  {product.description ||
-                    "Pieza de la curaduría Dropes, con garantía oficial de 2 años. Diseñada para durar yfabricada con materiales premium. Incluye todos los accesorios necesarios para un uso inmediato, con envío gratis en 24-48h a toda la península."}
+                <p className="mt-6 font-body text-sm text-gray-700 leading-relaxed">
+                  {product.description || "Pieza de la curaduría DROPEA con garantía oficial de 3 años. Diseñada y fabricada con materiales premium. Incluye todos los accesorios necesarios para un uso inmediato, con envío gratis en 24-48h a toda la península."}
                 </p>
 
-                {/* Quantity + actions */}
-                <div className="mt-8 flex flex-col gap-3">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center rounded-full border border-border">
-                      <button
-                        onClick={() => setQty(Math.max(1, qty - 1))}
-                        className="grid h-10 w-10 place-items-center text-foreground hover:bg-clay-50"
-                        aria-label="Restar"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <span className="w-10 text-center font-medium tabular-nums">
-                        {qty}
-                      </span>
-                      <button
-                        onClick={() => setQty(qty + 1)}
-                        className="grid h-10 w-10 place-items-center text-foreground hover:bg-clay-50"
-                        aria-label="Sumar"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <span className="text-sm text-muted-foreground">
-                      Subtotal: {formatEuro(price * qty)}€
-                    </span>
+                {/* Quantity */}
+                <div className="mt-6 flex items-center gap-4">
+                  <div className="flex items-center brutal-border bg-brand-purewhite shadow-brutal">
+                    <button
+                      onClick={() => setQty(Math.max(1, qty - 1))}
+                      className="w-10 h-10 flex items-center justify-center hover:bg-brand-yellow transition-colors"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="w-10 text-center font-mono font-black text-lg">{qty}</span>
+                    <button
+                      onClick={() => setQty(qty + 1)}
+                      className="w-10 h-10 flex items-center justify-center hover:bg-brand-yellow transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
                   </div>
+                  <span className="font-mono text-xs font-bold uppercase text-gray-600">
+                    Subtotal: {formatEuro(price * qty)}€
+                  </span>
+                </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        add(product, qty);
-                        onClose();
-                      }}
-                      className="flex-1 justify-center rounded-full bg-foreground text-background hover:bg-clay-700"
-                    >
-                      <ShoppingBag className="mr-2 h-4 w-4" />
-                      Añadir al carrito
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => toggleFav(product.id)}
-                      className="rounded-full"
-                      aria-label="Favorito"
-                    >
-                      <Heart className={cn("h-4 w-4", isFav && "fill-clay-500 text-clay-500")} />
-                    </Button>
-                  </div>
+                {/* Actions */}
+                <div className="mt-6 flex gap-2">
+                  <button
+                    onClick={() => {
+                      add(product, qty);
+                      onClose();
+                    }}
+                    className="flex-1 bg-brand-red hover:bg-brand-black text-brand-purewhite brutal-border py-4 font-headline font-black text-sm uppercase tracking-wider shadow-brutal hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center justify-center gap-2"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    AÑADIR AL PEDIDO
+                  </button>
+                  <button
+                    onClick={() => toggleFav(product.id)}
+                    className={`w-14 brutal-border flex items-center justify-center shadow-brutal hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all ${
+                      isFav ? "bg-brand-red text-white" : "bg-brand-purewhite"
+                    }`}
+                  >
+                    <Heart className={isFav ? "fill-white" : ""} />
+                  </button>
                 </div>
 
                 {/* Trust */}
-                <div className="mt-8 grid grid-cols-3 gap-3 border-t border-border pt-6">
+                <div className="mt-6 grid grid-cols-3 gap-2 pt-6 border-t-2 border-brand-black">
                   {[
-                    { icon: Truck, label: "Envío 24-48h" },
-                    { icon: Shield, label: "Pago seguro" },
-                    { icon: RotateCcw, label: "30 días" },
+                    { icon: Truck, label: "ENVÍO 24/48H" },
+                    { icon: Shield, label: "PAGO SEGURO" },
+                    { icon: RotateCcw, label: "30 DÍAS" },
                   ].map(({ icon: Icon, label }) => (
                     <div key={label} className="flex flex-col items-center text-center">
-                      <Icon className="h-5 w-5 text-clay-600" />
-                      <span className="mt-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {label}
-                      </span>
+                      <Icon className="text-brand-red text-xl" />
+                      <span className="font-mono text-[10px] font-bold uppercase mt-1">{label}</span>
                     </div>
                   ))}
                 </div>
@@ -204,38 +198,32 @@ export function ProductModal({ product, onClose, onOpenProduct }: ProductModalPr
 
             {/* Related */}
             {related.length > 0 && (
-              <div className="border-t border-border p-6 sm:p-10">
-                <div className="mb-6 flex items-center justify-between">
-                  <h2 className="font-display text-2xl">También te puede gustar</h2>
-                  <button
-                    onClick={onClose}
-                    className="link-underline hidden text-sm text-muted-foreground hover:text-foreground sm:inline"
-                  >
-                    Seguir explorando
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-6">
+              <div className="brutal-border-t p-6 sm:p-8 bg-brand-cream">
+                <h2 className="font-display font-black text-2xl uppercase tracking-tight mb-4">
+                  TAMBIÉN TE PUEDE GUSTAR
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {related.map((p) => (
                     <button
                       key={p.id}
                       onClick={() => onOpenProduct(p)}
-                      className="group text-left"
+                      className="bg-brand-purewhite brutal-border p-3 shadow-brutal hover:shadow-brutal-lg hover:translate-x-0.5 hover:translate-y-0.5 transition-all text-left"
                     >
-                      <div className="relative aspect-square overflow-hidden rounded-xl bg-clay-50">
+                      <div className="relative aspect-square overflow-hidden brutal-border bg-brand-cream mb-2">
                         <Image
                           src={p.image}
                           alt={p.name}
                           fill
                           unoptimized
                           referrerPolicy="no-referrer"
-                          sizes="200px"
-                          className="object-contain p-4 img-zoom"
+                          sizes="150px"
+                          className="object-contain p-2"
                         />
                       </div>
-                      <h3 className="mt-2 line-clamp-1 text-sm text-foreground group-hover:text-clay-700">
+                      <h3 className="font-headline font-black text-xs uppercase line-clamp-2 text-brand-black">
                         {p.name}
                       </h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="font-display font-black text-sm text-brand-red mt-1">
                         {formatEuro(parsePrice(p.priceNow))}€
                       </p>
                     </button>
@@ -249,4 +237,3 @@ export function ProductModal({ product, onClose, onOpenProduct }: ProductModalPr
     </AnimatePresence>
   );
 }
-

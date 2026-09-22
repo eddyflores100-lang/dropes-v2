@@ -6,7 +6,7 @@ export type Category =
   | "Cocina"
   | "Niños";
 
-export type ProductTag = "PREMIUM" | "SUPER VENTAS" | "";
+export type ProductTag = "PREMIUM" | "SUPER VENTAS" | "TOP VENTAS" | "INNOVACIÓN" | "COCINA PRO" | "BLUETOOTH 5.3" | "ECO-TECH" | "CONFORT" | "SEGURIDAD" | "DESCANSO" | "CINE EN CASA" | "HD WIRELESS" | "";
 
 export type CountryCode = "ES" | "PT";
 
@@ -25,6 +25,7 @@ export interface Product {
   reviews: string;
   category: Category;
   tag: ProductTag;
+  tag2?: string;
   description?: string;
   brand?: string;
 }

@@ -1,46 +1,47 @@
 import type { Metadata } from "next";
-import { Inter_Tight, Fraunces, JetBrains_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, Space_Grotesk, Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
-const inter = Inter_Tight({
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
+  subsets: ["latin"],
+  weight: ["700", "800"],
+  style: ["normal", "italic"],
+  display: "swap",
+});
+
+const grotesk = Space_Grotesk({
+  variable: "--font-grotesk",
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  display: "swap",
+});
+
+const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["400", "600", "700", "900"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  display: "swap",
-  axes: ["opsz", "SOFT", "WONK"],
-});
-
-const mono = JetBrains_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-  display: "swap",
-});
+// Plus Jakarta Sans 900 not available in Google Fonts variable; use 800 as max
+// In CSS we use font-black (900) which maps to 800 via font-synthesis
 
 export const metadata: Metadata = {
-  title: "Dropes — Objetos de diseño, enviados a tu puerta",
+  title: "DROPEA® — Bold Editorial High-Impact Shop",
   description:
-    "Tienda de curaduría premium. Envío gratis en 24-48h a toda España y Portugal. Contra reembolso, tarjeta o Bizum. 30 días de devolución sin preguntas.",
-  keywords: [
-    "dropes", "tienda online", "diseño", "hogar", "envío gratis",
-    "españa", "portugal", "contra reembolso", "curaduría",
-  ],
-  authors: [{ name: "Dropes" }],
+    "Tienda de productos virales con envío gratis 24/48h a España y Portugal. Pago contra reembolso disponible. 30 días de prueba garantizados.",
+  keywords: ["dropea", "tienda online", "contra reembolso", "envío gratis", "españa", "portugal"],
+  authors: [{ name: "Dropea" }],
   openGraph: {
-    title: "Dropes — Objetos de diseño, enviados a tu puerta",
+    title: "DROPEA® — Bold Editorial High-Impact Shop",
     description:
-      "Tienda de curaduría premium. Envío gratis en 24-48h a España y Portugal.",
-    url: "https://dropes.example.com",
-    siteName: "Dropes",
+      "Productos virales con envío gratis 24/48h. Pago contra reembolso disponible.",
     type: "website",
     locale: "es_ES",
   },
-  alternates: { canonical: "https://dropes.example.com/" },
 };
 
 export default function RootLayout({
@@ -49,7 +50,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${fraunces.variable} ${mono.variable} antialiased`}
+        className={`${jakarta.variable} ${grotesk.variable} ${inter.variable} antialiased`}
       >
         {children}
         <Toaster />
