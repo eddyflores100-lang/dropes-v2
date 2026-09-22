@@ -10,7 +10,7 @@ export function Footer() {
           {/* Brand Pitch */}
           <div className="lg:col-span-2 space-y-4">
             <a href="#" className="font-display font-black text-4xl text-brand-purewhite tracking-tighter uppercase inline-block">
-              DROPEA<span className="text-brand-red">.</span>
+              DROPES<span className="text-brand-red">.</span>
             </a>
             <p className="font-body text-sm text-gray-400 font-medium max-w-sm leading-relaxed">
               La tienda de confianza para productos que marcan tendencia. Pagas cuando recibes tu paquete directamente en tus manos en cualquier punto de España y Portugal.
@@ -70,7 +70,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
           <p className="font-mono text-xs text-gray-500 font-bold uppercase text-center sm:text-left">
-            © 2026 Dropea Shop S.L. • Todos los derechos reservados. Comercio electrónico seguro.
+            © 2026 AliceLabs LLC • Todos los derechos reservados. Comercio electrónico seguro.
           </p>
           <div className="flex items-center gap-2 font-mono text-xs font-black">
             <span className="bg-brand-purewhite text-black px-2 py-0.5 brutal-border">CONTRA REEMBOLSO</span>

@@ -133,7 +133,7 @@ export function ProductModal({ product, onClose, onOpenProduct }: ProductModalPr
                 </div>
 
                 <p className="mt-6 font-body text-sm text-gray-700 leading-relaxed">
-                  {product.description || "Pieza de la curaduría DROPEA con garantía oficial de 3 años. Diseñada y fabricada con materiales premium. Incluye todos los accesorios necesarios para un uso inmediato, con envío gratis en 24-48h a toda la península."}
+                  {product.description || "Pieza de la curaduría DROPES con garantía oficial de 3 años. Diseñada y fabricada con materiales premium. Incluye todos los accesorios necesarios para un uso inmediato, con envío gratis en 24-48h a toda la península."}
                 </p>
 
                 {/* Quantity */}

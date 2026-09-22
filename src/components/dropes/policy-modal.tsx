@@ -60,7 +60,7 @@ const POLICIES: Record<string, { title: string; sections: { h: string; p: string
       },
       {
         h: "6. DESTINATARIOS",
-        p: "Tus datos podrán ser cedidos a: (a) empresas de paquetería y mensajería para la entrega de pedidos (DHL, SEUR, Correos, GLS); (b) pasarelas de pago (Stripe, PayPal, Bizum) para procesar transacciones; (c) proveedores de Dropshipping (Dropea S.L.) para el envío directo de productos; (d) autoridades fiscales cuando sea legalmente exigible. No se cederán datos a terceros sin consentimiento salvo obligación legal.",
+        p: "Tus datos podrán ser cedidos a: (a) empresas de paquetería y mensajería para la entrega de pedidos (DHL, SEUR, Correos, GLS); (b) pasarelas de pago (Stripe, PayPal, Bizum) para procesar transacciones; (c) proveedores de Dropshipping (AliceLabs LLC) para el envío directo de productos; (d) autoridades fiscales cuando sea legalmente exigible. No se cederán datos a terceros sin consentimiento salvo obligación legal.",
       },
       {
         h: "7. DERECHOS DEL USUARIO",

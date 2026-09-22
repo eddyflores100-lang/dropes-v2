@@ -45,7 +45,7 @@ export function Navbar({ onCartOpen, onFavoritesOpen, onSearchOpen }: NavbarProp
           {/* LOGO */}
           <Link href="#" className="flex items-center gap-2 group shrink-0">
             <span className="font-display font-black text-3xl sm:text-4xl tracking-tighter text-brand-black uppercase">
-              DROPEA<span className="text-brand-red font-black text-4xl leading-none">.</span>
+              DROPES<span className="text-brand-red font-black text-4xl leading-none">.</span>
             </span>
             <span className="hidden sm:inline-block bg-brand-black text-brand-purewhite text-[10px] font-mono font-black uppercase px-2 py-0.5 tracking-widest border border-brand-black">
               EDICIÓN 2026
@@ -153,7 +153,7 @@ export function Navbar({ onCartOpen, onFavoritesOpen, onSearchOpen }: NavbarProp
           />
           <div className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-brand-cream brutal-border-l p-6 overflow-y-auto">
             <div className="flex items-center justify-between mb-8">
-              <span className="font-display font-black text-2xl uppercase">DROPEA.</span>
+              <span className="font-display font-black text-2xl uppercase">DROPES.</span>
               <button
                 onClick={() => setMobileOpen(false)}
                 className="w-10 h-10 brutal-border bg-brand-purewhite flex items-center justify-center shadow-brutal"

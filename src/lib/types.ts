@@ -61,5 +61,5 @@ export interface OrderRecord {
   customer: Pick<Customer, "first_name" | "last_name" | "email" | "city" | "country">;
   paymentMethod: PaymentMethod;
   status: "pending" | "confirmed" | "failed";
-  dropeaId?: string;
+  partnerOrderId?: string;
 }
