@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Dropes — Arquitectura v1 → v2</title>
+<style>
+  @page { size: 1200px 850px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 1200px;
+    height: 850px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #0a0a0b;
+    color: #e4e4e7;
+    -webkit-font-smoothing: antialiased;
+  }
+  .poster {
+    width: 1200px;
+    height: 850px;
+    padding: 36px 48px 28px;
+    background:
+      radial-gradient(at 12% 8%, rgba(220, 38, 38, 0.18) 0px, transparent 50%),
+      radial-gradient(at 88% 12%, rgba(99, 102, 241, 0.10) 0px, transparent 50%),
+      radial-gradient(at 50% 95%, rgba(244, 63, 94, 0.10) 0px, transparent 50%),
+      #0a0a0b;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ───────────────────────────────────────────────── */
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #dc2626;
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.18);
+  }
+  .brand-name {
+    font-family: 'Sora', 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    color: #fff;
+  }
+  .meta { text-align: right; font-size: 11px; color: #71717a; line-height: 1.5; }
+  .meta strong { color: #d4d4d8; font-weight: 700; }
+
+  h1 {
+    font-family: 'Sora', 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 36px;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    margin-top: 18px;
+    color: #fff;
+  }
+  h1 .accent { color: #dc2626; }
+  .subtitle {
+    font-size: 14px;
+    color: #a1a1aa;
+    margin-top: 8px;
+    max-width: 900px;
+    line-height: 1.5;
+  }
+
+  /* ── Columns ──────────────────────────────────────────────── */
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr;
+    gap: 0;
+    margin-top: 28px;
+    flex: 1;
+  }
+  .column { display: flex; flex-direction: column; gap: 10px; }
+  .col-title {
+    font-family: 'Sora', sans-serif;
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    border-radius: 8px;
+    display: inline-block;
+    margin-bottom: 4px;
+    align-self: flex-start;
+  }
+  .col-v1 .col-title { background: rgba(220, 38, 38, 0.15); color: #fca5a5; border: 1px solid rgba(220, 38, 38, 0.3); }
+  .col-v2 .col-title { background: rgba(34, 197, 94, 0.15); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.3); }
+
+  /* Arrow column */
+  .arrow-col {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    padding-top: 50px;
+  }
+  .arrow {
+    width: 0; height: 0;
+    border-left: 18px solid transparent;
+    border-right: 18px solid transparent;
+    border-bottom: 28px solid #dc2626;
+    transform: rotate(90deg);
+    filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.5));
+  }
+
+  /* ── Layer cards ──────────────────────────────────────────── */
+  .layer {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .layer-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .layer-name {
+    font-family: 'Sora', sans-serif;
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #d4d4d8;
+  }
+  .layer-tag {
+    font-size: 9px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .tag-bad { background: rgba(220, 38, 38, 0.2); color: #fca5a5; }
+  .tag-good { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+  .tag-warn { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+
+  .layer-body {
+    font-size: 11px;
+    line-height: 1.5;
+    color: #a1a1aa;
+  }
+  .layer-body code, .layer-body .code {
+    font-family: 'SF Mono', 'Cascadia Code', Menlo, monospace;
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: #f4f4f5;
+  }
+  .layer-body .strike {
+    color: #71717a;
+    text-decoration: line-through;
+    text-decoration-color: #dc2626;
+    text-decoration-thickness: 1.5px;
+  }
+  .layer-body .good { color: #86efac; font-weight: 600; }
+  .layer-body .bad { color: #fca5a5; font-weight: 600; }
+
+  ul.clean { list-style: none; padding: 0; margin: 0; }
+  ul.clean li {
+    padding: 3px 0;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  ul.clean li:last-child { border-bottom: none; }
+  ul.clean li .ic { display: inline-block; width: 14px; text-align: center; font-weight: bold; }
+  ul.clean li .ic-yes { color: #86efac; }
+  ul.clean li .ic-no { color: #fca5a5; }
+  ul.clean li .ic-warn { color: #fcd34d; }
+
+  /* ── Stats footer ─────────────────────────────────────────── */
+  .footer-stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .stat {
+    text-align: center;
+    padding: 8px 4px;
+  }
+  .stat-val {
+    font-family: 'Sora', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    color: #fff;
+    line-height: 1.1;
+  }
+  .stat-val.red { color: #dc2626; }
+  .stat-val.green { color: #86efac; }
+  .stat-lbl {
+    font-size: 10px;
+    color: #71717a;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+  }
+
+  /* ── Security callout ─────────────────────────────────────── */
+  .security-bar {
+    margin-top: 16px;
+    padding: 10px 16px;
+    background: linear-gradient(90deg, rgba(220, 38, 38, 0.12) 0%, rgba(220, 38, 38, 0.02) 100%);
+    border-left: 3px solid #dc2626;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #d4d4d8;
+    line-height: 1.5;
+  }
+  .security-bar strong { color: #fca5a5; font-weight: 700; }
+  .security-bar .ok { color: #86efac; font-weight: 700; }
+
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span class="brand-name">Dropes</span>
+      </div>
+      <h1>Arquitectura <span class="accent">v1 → v2</span></h1>
+      <p class="subtitle">
+        Migración del e-commerce de dropshipping — refactor de seguridad, dependencias y tipado.
+        Comparativa capa por capa entre el repositorio original (Dropes) y la nueva versión refactorizada.
+      </p>
+    </div>
+    <div class="meta">
+      <strong>Proyecto</strong><br>
+      dropes-v2<br>
+      <strong>Stack:</strong> React 19 + Vite 6<br>
+      <strong>Fecha:</strong> 22-sep-2026
+    </div>
+  </div>
+
+  <!-- Columns -->
+  <div class="columns">
+
+    <!-- ────────── v1 ────────── -->
+    <div class="column col-v1">
+      <span class="col-title">v1 — Dropes (original)</span>
+
+      <div class="layer">
+        <div class="layer-head">
+          <span class="layer-name">Frontend</span>
+          <span class="layer-tag tag-bad">9 archivos</span>
+        </div>
+        <div class="layer-body">
+          17 componentes React + Tailwind 4. Imports <span class="code">framer-motion</span> en 9 archivos pero el <span class="code">package.json</span> declara <span class="code">motion</span> → <span class="bad">build roto</span> en fresh install.
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-head">
+          <span class="layer-name">Estado</span>
+          <span class="layer-tag tag-warn">in-memory</span>
+        </div>
+        <div class="layer-body">
+          <ul class="clean">
+            <li><span class="ic ic-no">×</span> Cart: solo en memoria (se pierde al recargar)</li>
+            <li><span class="ic ic-no">×</span> Favoritos: botón Heart sin onClick</li>
+            <li><span class="ic ic-no">×</span> Sin login / historial de pedidos</li>
+            <li><span class="ic ic-warn">!</span> CheckoutModal: email hardcoded <span class="code">"cliente@tienda.com"</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-head">
+          <span class="layer-name">API client</span>
+          <span class="layer-tag tag-bad">key expuesta</span>
+        </div>
+        <div class="layer-body">
+          Llama directo a <span class="code">api.dropea.com/graphql</span> desde el navegador. La <span class="bad">API key está hardcoded en 11 archivos</span> (frontend visible en el bundle).
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-head">
+          <span class="layer-name">Dependencias</span>
+          <span class="layer-tag tag-bad">5 inútiles</span>
+        </div>
+        <div class="layer-body">
+          <span class="strike">firebase</span> · <span class="strike">axios</span> · <span class="strike">better-sqlite3</span> · <span class="strike">express</span> · <span class="strike">@google/genai</span><br>
+          <span style="font-size: 10px; color: #71717a;">Inicializadas pero nunca importadas en el bundle frontend.</span>
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-head">
+          <span class="layer-name">Tipado</span>
+          <span class="layer-tag tag-bad">any</span>
+        </div>
+        <div class="layer-body">
+          TypeScript en modo no-strict. Todo es <span class="code">any</span>. Sin interfaces compartidas. El lint no falla ni con variables no usadas.
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-head">
+          <span class="layer-name">Build / SEO</span>
+          <span class="layer-tag tag-bad">nada</span>
+        </div>
+        <div class="layer-body">
+          <ul class="clean">
+            <li><span class="ic ic-no">×</span> Sin sitemap.xml / robots.txt</li>
+            <li><span class="ic ic-no">×</span> Sin meta tags OG ni structured data</li>
+            <li><span class="ic ic-no">×</span> Sin validación pre-build</li>
+            <li><span class="ic ic-warn">!</span> 14 archivos temporales sueltos en el repo</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Arrow column -->
+    <div class="arrow-col">
+      <div class="arrow"></div>
+    </div>
+
+    <!-- ────────── v2 ────────── -->
+    <div class="column col-v2">
+      <span class="col-title">v2 — dropes-v2 (refactor)</span>
+
+      <div class="layer">
+        <div class="layer-head">
+          <span class="layer-name">Frontend</span>
+          <span class="layer-tag tag-good">20 archivos</span>
+        </div>
+        <div class="layer-body">
+          20 componentes + <span class="good">SearchOverlay, FavoritesDrawer, LoginModal</span>. Imports unificados a <span class="code">motion/react</span>. Diseño refrescado: Inter + Sora, glassmorphism, mesh-gradient.
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-head">
+          <span class="layer-name">Estado</span>
+          <span class="layer-tag tag-good">hooks + localStorage</span>
+        </div>
+        <div class="layer-body">
+          <ul class="clean">
+            <li><span class="ic ic-yes">✓</span> <span class="code">useCart</span> — persiste en <span class="code">dropes:cart</span></li>
+            <li><span class="ic ic-yes">✓</span> <span class="code">useFavorites</span> — drawer lateral + badge</li>
+            <li><span class="ic ic-yes">✓</span> <span class="code">useAuth</span> — magic email + sync cross-tab</li>
+            <li><span class="ic ic-yes">✓</span> <span class="code">useOrders</span> — historial local (50 pedidos)</li>
+            <li><span class="ic ic-yes">✓</span> Email requerido y validado en checkout</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-head">
+          <span class="layer-name">API client</span>
+          <span class="layer-tag tag-good">.env</span>
+        </div>
+        <div class="layer-body">
+          <span class="code">src/lib/dropea.ts</span> lee <span class="code">import.meta.env.VITE_DROPEA_API_KEY</span>. Key solo aparece en <span class="good">.env (no commiteado)</span>. Script de sync separado y paginado.
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-head">
+          <span class="layer-name">Dependencias</span>
+          <span class="layer-tag tag-good">−5 paquetes</span>
+        </div>
+        <div class="layer-body">
+          <span class="good">Eliminadas:</span> firebase, axios, better-sqlite3, express, @google/genai, dotenv, react-helmet-async.<br>
+          <span style="font-size: 10px; color: #71717a;">95 paquetes instalados vs 200+ en v1.</span>
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-head">
+          <span class="layer-name">Tipado</span>
+          <span class="layer-tag tag-good">strict</span>
+        </div>
+        <div class="layer-body">
+          <span class="code">strict: true</span>, <span class="code">noUnusedLocals</span>, <span class="code">noUnusedParameters</span>, <span class="code">noFallthroughCasesInSwitch</span>. Interfaces: <span class="code">Product, CartItem, Customer, OrderRequest, OrderRecord</span>.
+        </div>
+      </div>
+
+      <div class="layer">
+        <div class="layer-head">
+          <span class="layer-name">Build / SEO</span>
+          <span class="layer-tag tag-good">completo</span>
+        </div>
+        <div class="layer-body">
+          <ul class="clean">
+            <li><span class="ic ic-yes">✓</span> <span class="code">tsc --noEmit</span> antes de <span class="code">vite build</span></li>
+            <li><span class="ic ic-yes">✓</span> sitemap.xml + robots.txt generados</li>
+            <li><span class="ic ic-yes">✓</span> OG meta + JSON-LD OnlineStore</li>
+            <li><span class="ic ic-yes">✓</span> Manual chunks (react-vendor, motion-vendor)</li>
+            <li><span class="ic ic-yes">✓</span> .gitignore cubre .env y temp_*</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Security callout -->
+  <div class="security-bar">
+    <strong>⚠ Seguridad:</strong> la API key de Dropea sigue siendo visible en el bundle del navegador
+    (cualquier variable <span class="code" style="background: rgba(255,255,255,0.08);">VITE_*</span> es inlined por Vite).
+    <span class="ok">v2 la aísla en .env</span> y documenta en MIGRATION.md el siguiente paso: proxy serverless o migración a Next.js 16 con API routes.
+  </div>
+
+  <!-- Footer stats -->
+  <div class="footer-stats">
+    <div class="stat">
+      <div class="stat-val red">11</div>
+      <div class="stat-lbl">Archivos con API key (v1)</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val green">1</div>
+      <div class="stat-lbl">Archivo .env (v2)</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val green">−5</div>
+      <div class="stat-lbl">Dependencias eliminadas</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val green">20</div>
+      <div class="stat-lbl">Componentes (vs 17)</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val green">200</div>
+      <div class="stat-lbl">Productos sincronizados</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Sitemap (set real domain in production)
+Sitemap: https://dropes.example.com/sitemap.xml
