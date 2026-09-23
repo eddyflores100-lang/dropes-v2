@@ -1,8 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Prisma schema for DROPES agent platform.
+// Note: original spec mentioned PostgreSQL, but the dev sandbox only ships
+// SQLite (db/custom.db). We use SQLite here so all routes work locally.
 
 generator client {
   provider = "prisma-client-js"
@@ -13,6 +11,154 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Order {
+  id              String      @id @default(cuid())
+  partnerOrderId  String?
+  customerId      String?
+  customerName    String
+  customerEmail   String
+  customerPhone   String?
+  customerAddress String?
+  customerCity    String?
+  customerZip     String?
+  customerCountry String?
+  items           OrderItem[]
+  total           Float
+  paymentMethod   String      @default("cod")
+  status          String      @default("pending") // pending | confirmed | failed | synced | cancelled
+  apiSource       String?     // dropea-v1 | dropea-v2 | local
+  agentCode       String?
+  agentId         String?
+  commissionRate  Float       @default(0.10)
+  commissionEarned Float      @default(0)
+  syncAttempts    Int         @default(0)
+  lastSyncError   String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([status])
+  @@index([agentId])
+  @@index([customerEmail])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  name      String
+  priceNow  Float
+  priceWas  Float?
+  originalCost Float?
+  profit    Float?
+  image     String?
+  quantity  Int
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Agent {
+  id           String   @id @default(cuid())
+  agentCode    String   @unique
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  socialMedia  String?
+  status       String   @default("active") // active | blocked | pending
+  clicks       Int      @default(0)
+  conversions  Int      @default(0)
+  totalEarned  Float    @default(0)
+  clicksRel    AgentClick[]
+  leadsRel     Lead[]
+  promotionsRel AgentPromotion[]
+  payoutsRel   AgentPayout[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([email])
+}
+
+model AgentClick {
+  id        String   @id @default(cuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  referer   String?
+  userAgent String?
+  landing   String?
+  ipHash    String?
+  converted Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([agentId])
+  @@index([createdAt])
+}
+
+model Lead {
+  id         String   @id @default(cuid())
+  agentId    String
+  agent      Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  email      String
+  phone      String?
+  name       String?
+  status     String   @default("new") // new | contacted | converted | lost | reminded
+  cartValue  Float    @default(0)
+  orderId    String?
+  events     LeadEvent[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([agentId])
+  @@index([status])
+  @@index([email])
+}
+
+model LeadEvent {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  event     String   // checkout_started | email_entered | checkout_abandoned | reminded | converted
+  meta      String?
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([event])
+}
+
+model AgentPromotion {
+  id        String   @id @default(cuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  channel   String   // instagram | tiktok | youtube | blog | email | other
+  url       String?
+  posts     Int      @default(0)
+  clicks    Int      @default(0)
+  cost      Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agentId])
+}
+
+model AgentPayout {
+  id        String   @id @default(cuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  amount    Float
+  currency  String   @default("EUR")
+  status    String   @default("pending") // pending | paid | cancelled
+  reference String?
+  period    String?  // YYYY-MM
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agentId])
+  @@index([status])
+}
+
+// Existing demo models kept for backward compat.
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
