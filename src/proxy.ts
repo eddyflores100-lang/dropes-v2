@@ -4,6 +4,7 @@
 // conversions to the right agent.
 
 import { NextResponse, type NextRequest } from "next/server";
+import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 
 const REF_PATTERN = /^DROPES-[A-Z0-9]{4}$/;
@@ -45,7 +46,7 @@ export async function proxy(req: NextRequest) {
           req.headers.get("x-forwarded-for") ||
           req.headers.get("x-real-ip") ||
           "unknown";
-        const ipHash = String(ipRaw).split(",")[0]?.trim().slice(0, 64) || "unknown";
+        const ipHash = createHash("sha256").update(`${process.env.SESSION_SECRET || ""}:${String(ipRaw).split(",")[0]?.trim()}`).digest("hex");
         await db.agentClick.create({
           data: {
             agentId: agent.id,

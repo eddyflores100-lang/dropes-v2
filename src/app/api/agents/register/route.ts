@@ -21,20 +21,20 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (typeof email !== "string" || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json(
       { ok: false, error: "Valid email is required" },
       { status: 400 }
     );
   }
-  if (!password || password.length < 6) {
+  if (typeof password !== "string" || password.length < 10 || password.length > 72) {
     return NextResponse.json(
-      { ok: false, error: "Password must be at least 6 chars" },
+      { ok: false, error: "Password must contain 10–72 characters" },
       { status: 400 }
     );
   }
 
-  const existing = await db.agent.findUnique({ where: { email } });
+  const existing = await db.agent.findUnique({ where: { email: email.trim().toLowerCase() } });
   if (existing) {
     return NextResponse.json(
       { ok: false, error: "Email already registered" },
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     data: {
       agentCode,
       name: name.trim(),
-      email: email.toLowerCase(),
+      email: email.trim().toLowerCase(),
       phone: phone ?? null,
       passwordHash,
       socialMedia: socialMedia ?? null,

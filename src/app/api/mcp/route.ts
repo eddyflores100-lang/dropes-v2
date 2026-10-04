@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createCheckout, commissionBalance } from "@/lib/order-service";
 import { db } from "@/lib/db";
 import productsData from "@/data/products.json";
 import type { Product } from "@/lib/types";
@@ -6,6 +7,7 @@ import {
   COMMISSION_RATE,
   generateAgentCode,
   hashPassword,
+  getCurrentAgent,
 } from "@/lib/dropea-server";
 
 export const runtime = "nodejs";
@@ -117,16 +119,17 @@ const TOOLS: ToolDef[] = [
   {
     name: "create_order",
     description:
-      "Create an order from the agent's referral. Returns orderId, commission earned, apiSource.",
+      "Create an order from the agent's referral. Returns a pending orderId; commission remains zero until verified delivery.",
     inputSchema: {
       type: "object",
       properties: {
         agentCode: { type: "string" },
         customer: { type: "object" },
         items: { type: "array" },
-        paymentMethod: { type: "string" },
+        paymentMethod: { type: "string", enum: ["cod"] },
+        idempotencyKey: { type: "string" },
       },
-      required: ["agentCode", "customer", "items"],
+      required: ["agentCode", "customer", "items", "idempotencyKey", "paymentMethod"],
     },
   },
 ];
@@ -143,51 +146,26 @@ async function discoverOpportunity() {
       paymentSchedule: "monthly",
       cookieWindowDays: 30,
       catalogSize: ALL_PRODUCTS.length,
-      averageCommission: 18.5,
-      topCommission: 218.14,
+      commissionEligibility: "verified_delivery_only",
+      commissionBasis: "delivered_product_value",
       connection: {
         protocol: "MCP (JSON-RPC 2.0)",
         endpoint: "/api/mcp",
         transport: "http",
-        auth: "agentCode in tool args",
+        auth: "Signed session cookie; agentCode is not a credential",
       },
       marketplace: {
         brand: "DROPES",
         shopId: process.env.DROPEA_SHOP_ID ?? "demo_shop",
-        paymentMethods: ["contra reembolso", "tarjeta"],
-        shippingWindow: "24-48h ES/PT",
+        paymentMethods: ["contra reembolso"],
+        shippingWindow: "Se confirma antes del envío",
       },
     },
   };
 }
 
-async function registerAgent(args: any) {
-  const { name, email, phone, password, socialMedia } = args ?? {};
-  if (!name || !email || !password) {
-    return { error: "name, email, and password are required" };
-  }
-  const existing = await db.agent.findUnique({ where: { email } });
-  if (existing) {
-    return { error: "Email already registered", agentCode: existing.agentCode };
-  }
-  const agentCode = generateAgentCode();
-  const passwordHash = await hashPassword(String(password));
-  const agent = await db.agent.create({
-    data: {
-      agentCode,
-      name,
-      email,
-      phone: phone ?? null,
-      passwordHash,
-      socialMedia: socialMedia ?? null,
-    },
-  });
-  return {
-    agentCode: agent.agentCode,
-    agentId: agent.id,
-    referralLink: `/?ref=${agent.agentCode}`,
-    createdAt: agent.createdAt,
-  };
+async function registerAgent() {
+  return {signupUrl:"/agentes/registro",message:"Regístrate en la web para aceptar las condiciones y crear tu acceso."};
 }
 
 async function getCatalog(args: any) {
@@ -203,15 +181,11 @@ async function getCatalog(args: any) {
       numeric_id: p.numeric_id,
       name: p.name,
       priceNow: p.priceNow,
-      priceWas: p.priceWas,
       profit: p.profit,
       original_cost: p.original_cost,
       image: p.image,
       category: p.category,
-      tag: p.tag,
-      stars: p.stars,
-      reviews: p.reviews,
-      commission: Math.round(parseFloat(p.profit.replace(",", ".")) * COMMISSION_RATE * 100) / 100,
+      commission: Math.round(parseFloat(p.priceNow.replace(",", ".")) * COMMISSION_RATE * 100) / 100,
     })),
   };
 }
@@ -225,13 +199,13 @@ async function getProductDetail(args: any) {
   if (!product) return { error: "Product not found" };
   return {
     product: {
-      ...product,
-      commission: Math.round(parseFloat(product.profit.replace(",", ".")) * COMMISSION_RATE * 100) / 100,
+      id:product.id, name:product.name, priceNow:product.priceNow, image:product.image, category:product.category,
+      commission: Math.round(parseFloat(product.priceNow.replace(",", ".")) * COMMISSION_RATE * 100) / 100,
     },
     marketingCopy: {
-      short: `${product.name} — ${product.priceNow}€ (antes ${product.priceWas}€)`,
-      hook: `🔥 ${product.tag || "OFERTA"} — ${product.reviews} | ${product.stars}★`,
-      cta: "Pide contra reembolso. Envío gratis 24-48h.",
+      short: `${product.name} — ${product.priceNow}€`,
+      hook: `${product.name}: consulta disponibilidad y condiciones.`,
+      cta: "Solicita tu pedido contra reembolso. Disponibilidad y entrega sujetas a confirmación.",
     },
   };
 }
@@ -246,15 +220,15 @@ async function getMarketingKit(args: any) {
     agentCode: agent.agentCode,
     referralLink: `/?ref=${agent.agentCode}`,
     copy: {
-      instagram: `🛒 ¡Encuentro de la semana! ${top[0]?.name} por solo ${top[0]?.priceNow}€ (antes ${top[0]?.priceWas}€). Link en bio 🚀`,
-      tiktok: `Esto se vende solo 🔥 ${top[0]?.priceNow}€ contra reembolso. Comenta "YO" si lo quieres.`,
-      email: `Hola, te recomiendo ${top[0]?.name} a ${top[0]?.priceNow}€ con envío gratis 24-48h.`,
+      instagram: `🛒 ¡Encuentro de la semana! ${top[0]?.name} por solo ${top[0]?.priceNow}€. Link en bio 🚀`,
+      tiktok: `Descubre este producto: ${top[0]?.priceNow}€ contra reembolso. Comenta "YO" si lo quieres.`,
+      email: `Hola, te recomiendo ${top[0]?.name} a ${top[0]?.priceNow}€ contra reembolso; consulta disponibilidad y condiciones de entrega.`,
     },
     recommendedProducts: top.map((p) => ({
       id: p.id,
       name: p.name,
       priceNow: p.priceNow,
-      commission: Math.round(parseFloat(p.profit.replace(",", ".")) * COMMISSION_RATE * 100) / 100,
+      commission: Math.round(parseFloat(p.priceNow.replace(",", ".")) * COMMISSION_RATE * 100) / 100,
     })),
   };
 }
@@ -277,7 +251,7 @@ async function getAgentStats(args: any) {
     clicks: agent.clicks,
     conversions: agent.conversions,
     conversionRate: agent.clicks > 0 ? agent.conversions / agent.clicks : 0,
-    totalEarned: agent.totalEarned,
+    ...(await commissionBalance(db, agent.id)),
     pendingPayout: pendingPayouts._sum.amount ?? 0,
     leadsCount: agent._count.leadsRel,
   };
@@ -327,61 +301,10 @@ async function trackPromotion(args: any) {
 }
 
 async function createOrder(args: any) {
-  const { agentCode, customer, items, paymentMethod = "cod" } = args ?? {};
-  if (!agentCode || !customer || !Array.isArray(items) || !items.length) {
-    return { error: "agentCode, customer, and items[] are required" };
-  }
-  const agent = await db.agent.findUnique({ where: { agentCode } });
-  if (!agent) return { error: "Agent not found" };
-
-  const total = items.reduce(
-    (acc: number, i: any) => acc + parseFloat(String(i.priceNow || i.price || "0")) * Number(i.quantity || 1),
-    0
-  );
-  const commissionEarned = Math.round(total * COMMISSION_RATE * 100) / 100;
-
-  const order = await db.order.create({
-    data: {
-      customerName: `${customer.first_name || ""} ${customer.last_name || ""}`.trim(),
-      customerEmail: customer.email,
-      customerPhone: customer.phone || null,
-      customerAddress: customer.address || null,
-      customerCity: customer.city || null,
-      customerZip: customer.zip || null,
-      customerCountry: customer.country || null,
-      total,
-      paymentMethod,
-      status: "pending",
-      apiSource: "local",
-      agentCode: agent.agentCode,
-      agentId: agent.id,
-      commissionEarned,
-      items: {
-        create: items.map((i: any) => ({
-          productId: String(i.id ?? i.productId ?? ""),
-          name: String(i.name ?? ""),
-          priceNow: parseFloat(String(i.priceNow || i.price || "0")),
-          quantity: Number(i.quantity || 1),
-          image: i.image ?? null,
-        })),
-      },
-    },
-    include: { items: true },
-  });
-
-  await db.agent.update({
-    where: { id: agent.id },
-    data: { conversions: { increment: 1 }, totalEarned: { increment: commissionEarned } },
-  });
-
-  return {
-    ok: true,
-    orderId: order.id,
-    agentCode: agent.agentCode,
-    commissionEarned,
-    total,
-    apiSource: "local",
-  };
+  if (process.env.CHECKOUT_ENABLED !== "true") throw new Error("Checkout unavailable");
+  const agent = await getCurrentAgent();
+  if (!agent || agent.agentCode !== args?.agentCode) throw new Error("Authentication required");
+  return createCheckout(db, args, args.idempotencyKey, agent.id, ALL_PRODUCTS);
 }
 
 const DISPATCH: Record<string, (args: any) => Promise<unknown>> = {
@@ -410,6 +333,7 @@ export async function POST(req: Request) {
 
   // Support batch
   if (Array.isArray(json)) {
+    if (json.length > 20) return NextResponse.json({error:"Batch limit exceeded"},{status:413});
     const results = await Promise.all(json.map((r) => handleSingle(r)));
     return NextResponse.json(results);
   }
@@ -443,13 +367,17 @@ async function handleSingle(req: any) {
       };
     }
     try {
+      if (["get_agent_stats", "get_agent_leads", "track_promotion", "create_order", "get_marketing_kit"].includes(name)) {
+        const agent = await getCurrentAgent();
+        if (!agent || agent.agentCode !== args.agentCode) throw new Error("Authentication required");
+      }
       const result = await DISPATCH[name](args);
       return { jsonrpc: "2.0", id, result };
     } catch (err: any) {
       return {
         jsonrpc: "2.0",
         id,
-        error: { code: -32603, message: err?.message ?? "Internal error" },
+        error: { code: -32603, message: "Solicitud no autorizada o inválida" },
       };
     }
   }

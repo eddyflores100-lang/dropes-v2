@@ -25,36 +25,16 @@ export function CartInteractions() {
     // Enganchar el botón "PEDIR CONTRA REEMBOLSO" del HTML original
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      const button = target.closest("button[onclick]");
-      if (button && button.textContent?.includes("PEDIR")) {
+      const button = target.closest("button[data-product-id]");
+      if (button) {
         e.preventDefault();
-        // Buscar el producto en el catálogo por nombre
-        const card = button.closest(".group");
-        const nameEl = card?.querySelector("h3");
-        if (nameEl) {
-          const name = nameEl.textContent?.trim() || "";
-          const product = ALL_PRODUCTS.find((p) =>
-            p.name.toLowerCase().includes(name.toLowerCase().slice(0, 20))
-          );
-          if (product) {
-            add(product);
-            // Feedback visual
-            const original = button.innerHTML;
-            button.innerHTML = `<span class="material-symbols-outlined text-base">check</span> ¡AÑADIDO AL PEDIDO!`;
-            button.classList.remove("bg-brand-black");
-            button.classList.add("bg-emerald-600");
-            setTimeout(() => {
-              button.innerHTML = original;
-              button.classList.remove("bg-emerald-600");
-              button.classList.add("bg-brand-black");
-            }, 2000);
-          }
-        }
+        const product = ALL_PRODUCTS.find(p => p.id === button.getAttribute("data-product-id"));
+        if (product) { add(product); setCartOpen(true); }
       }
 
       // Enganchar el botón de la cesta en el navbar
-      const cartBtn = target.closest('a[href="#"]');
-      if (cartBtn && cartBtn.textContent?.includes("Cesta")) {
+      const cartBtn = target.closest('[data-open-cart]');
+      if (cartBtn) {
         e.preventDefault();
         setCartOpen(true);
       }
@@ -322,6 +302,8 @@ function CheckoutModal({
   const [step, setStep] = useState<"form" | "success">("form");
   const [loading, setLoading] = useState(false);
   const [orderId, setOrderId] = useState("");
+  const [error, setError] = useState("");
+  const [savedTotal, setSavedTotal] = useState(0);
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -330,6 +312,7 @@ function CheckoutModal({
     address: "",
     city: "",
     zip: "",
+    country: "ES",
   });
 
   const total = items.reduce(
@@ -337,16 +320,23 @@ function CheckoutModal({
     0
   );
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      const id = `DP-${Date.now().toString(36).toUpperCase().slice(-6)}`;
-      setOrderId(id);
-      setStep("success");
-      clear();
-      setLoading(false);
-    }, 1200);
+    if (loading || !items.length) return;
+    setLoading(true); setError("");
+    try {
+      const payload = { customer: form, items: items.map(i=>({id:i.id,quantity:i.quantity})), paymentMethod: "cod", referralCode: sessionStorage.getItem("dropes-ref") || undefined };
+      const fingerprint = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(payload))))).map(b=>b.toString(16).padStart(2,"0")).join("");
+      const prior = JSON.parse(sessionStorage.getItem("dropes-checkout-attempt") || "null");
+      const key = prior?.fingerprint === fingerprint ? prior.key : crypto.randomUUID();
+      sessionStorage.setItem("dropes-checkout-attempt", JSON.stringify({key,fingerprint}));
+      const res = await fetch("/api/checkout", {method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":key},body:JSON.stringify({...payload,expectedTotal:total})});
+      const result = await res.json();
+      if (!res.ok || !result.ok || !result.orderId) throw new Error(result.error || "No se pudo guardar el pedido.");
+      setOrderId(result.orderId); setSavedTotal(result.total); setStep("success"); clear();
+      sessionStorage.removeItem("dropes-checkout-attempt");
+    } catch (e) { setError(e instanceof Error ? e.message : "No se pudo guardar el pedido. Reintenta con la misma cesta."); }
+    finally {setLoading(false);}
   };
 
   return createPortal(
@@ -377,7 +367,7 @@ function CheckoutModal({
               FINALIZAR PEDIDO
             </h2>
             <p style={{ fontFamily: "Space Grotesk, monospace", fontSize: 11, textTransform: "uppercase", color: "#666", marginBottom: 24 }}>
-              Introduce tus datos para completar la compra
+              Pago contra reembolso. El pedido queda pendiente de confirmar disponibilidad y entrega.
             </p>
 
             {items.length > 0 && (
@@ -402,21 +392,23 @@ function CheckoutModal({
               </div>
             )}
 
+            <p role="alert" style={{color:"#b91c1c"}}>{error}</p>
             <form onSubmit={submit} style={{ display: "grid", gap: 12 }}>
+              <label>País<select aria-label="País" value={form.country} onChange={e=>setForm({...form,country:e.target.value})} style={inputStyle}><option value="ES">España</option><option value="PT">Portugal</option></select></label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <input required placeholder="NOMBRE" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} style={inputStyle} />
-                <input required placeholder="APELLIDOS" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} style={inputStyle} />
+                <input required aria-label="Nombre" placeholder="NOMBRE" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} style={inputStyle} />
+                <input required aria-label="Apellidos" placeholder="APELLIDOS" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} style={inputStyle} />
               </div>
-              <input required type="email" placeholder="EMAIL" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={inputStyle} />
-              <input required type="tel" placeholder="TELÉFONO" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={inputStyle} />
-              <input required placeholder="DIRECCIÓN" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={inputStyle} />
+              <input required type="email" aria-label="Email" placeholder="EMAIL" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={inputStyle} />
+              <input required type="tel" aria-label="Teléfono" placeholder="TELÉFONO" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={inputStyle} />
+              <input required aria-label="Dirección" placeholder="DIRECCIÓN" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={inputStyle} />
               <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 12 }}>
-                <input required placeholder="CIUDAD" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} style={inputStyle} />
-                <input required placeholder="CP" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} style={inputStyle} />
+                <input required aria-label="Ciudad" placeholder="CIUDAD" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} style={inputStyle} />
+                <input required aria-label="Código postal" placeholder="CP" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} style={inputStyle} />
               </div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !items.length}
                 style={{
                   width: "100%",
                   background: "#0A0A0A",
@@ -433,7 +425,7 @@ function CheckoutModal({
                   opacity: loading ? 0.6 : 1,
                 }}
               >
-                {loading ? "PROCESANDO..." : "CONFIRMAR PEDIDO →"}
+                {loading ? "PROCESANDO..." : "SOLICITAR PEDIDO →"}
               </button>
             </form>
           </div>
@@ -443,13 +435,13 @@ function CheckoutModal({
               <span style={{ fontSize: 48, color: "white", fontWeight: 900 }}>✓</span>
             </div>
             <h2 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 900, fontSize: 48, textTransform: "uppercase", letterSpacing: "-0.02em", marginBottom: 12 }}>
-              ¡PEDIDO CONFIRMADO!
+              PEDIDO RECIBIDO
             </h2>
             <p style={{ fontFamily: "Space Grotesk, monospace", fontSize: 14, color: "#666", marginBottom: 8 }}>
-              Tu pedido <strong style={{ color: "#0A0A0A" }}>#{orderId}</strong> ha sido procesado.
+              Tu pedido <strong style={{ color: "#0A0A0A" }}>#{orderId}</strong> se ha guardado. Total: {savedTotal.toFixed(2)} €.
             </p>
             <p style={{ fontFamily: "Space Grotesk, monospace", fontSize: 12, color: "#666", marginBottom: 24 }}>
-              Recibirás un email de confirmación en breve. Te contactaremos por WhatsApp en 24-48h.
+              Conserva esta referencia. Tu solicitud está pendiente de confirmar disponibilidad y condiciones de entrega. No se ha realizado ningún cargo.
             </p>
             <button
               onClick={onClose}

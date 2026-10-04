@@ -31,7 +31,7 @@ const STEPS = [
   {
     num: "03",
     title: "GANA",
-    desc: "Cada venta confirmada desde tu enlace acumula comisión en tu panel. Cobro mensual garantizado.",
+    desc: "Cada entrega verificada desde tu enlace acumula comisión en tu panel. Solo los productos entregados habilitan comisiones pagables.",
   },
 ];
 
@@ -49,8 +49,8 @@ const BENEFITS = [
     desc: "El cliente paga al recibir. Más conversión, menos fricción.",
   },
   {
-    title: "ENVÍO 24-48H",
-    desc: "España y Portugal. Tus seguidores reciben al instante.",
+    title: "ENTREGA COORDINADA",
+    desc: "España y Portugal. Tus seguidores reciben tras confirmar disponibilidad y entrega.",
   },
   {
     title: "KIT DE MARKETING",
@@ -58,7 +58,7 @@ const BENEFITS = [
   },
   {
     title: "PANEL EN TIEMPO REAL",
-    desc: "Clicks, leads, ventas y comisiones actualizadas al instante.",
+    desc: "Clicks, leads, ventas y comisiones actualizadas tras confirmar disponibilidad y entrega.",
   },
 ];
 
@@ -148,7 +148,7 @@ function Hero() {
           }}
         >
           Únete al programa de agentes DROPES. Comparte productos top, gana
-          comisión por cada venta confirmada. Sin inventario, sin inversión,
+          comisión por cada entrega verificada. Sin inventario, sin inversión,
           sin límites.
         </p>
         <div
@@ -470,7 +470,7 @@ function CommissionBlock() {
           Producto vendido a 99€ → <strong>9.90€</strong> de comisión para ti.
           Producto premium a 399€ → <strong>39.90€</strong>. Sin techos, sin
           límites. Las comisiones se acreditan al confirmarse la entrega y se
-          pagan mensualmente.
+          pagan únicamente cuando existe saldo por productos entregados y verificados.
         </p>
         <Link
           href="/agentes/registro"

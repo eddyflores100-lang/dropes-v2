@@ -1,0 +1,38 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+const {PrismaClient}=await import(process.env.TEST_POSTGRES ? '@prisma/client' : '../node_modules/.dropes-test-client/index.js');
+import {createCheckout,recordDelivery,commissionBalance,recordPayout} from '../src/lib/order-service.ts';
+if(!process.env.TEST_DB_URL) throw new Error('TEST_DB_URL required; never run against production');
+const db=new PrismaClient({datasourceUrl:process.env.TEST_DB_URL});
+test.after(async()=>{await db.$disconnect()});
+const catalog=[{id:'sku',name:'Producto',priceNow:'19.95'}];
+const input={customer:{first_name:'Test',last_name:'Buyer',email:'test@example.com',phone:'123456789',address:'Test street 123',city:'Madrid',zip:'28001',country:'ES'},items:[{id:'sku',quantity:2,priceNow:'0.01'}],paymentMethod:'cod'};
+test('real database: checkout retry, verified partial delivery, duplicate evidence and return',async()=>{
+ await db.deliveryEvent.deleteMany(); await db.orderItem.deleteMany(); await db.order.deleteMany();await db.agentPayout.deleteMany();await db.agent.deleteMany();
+ const agent=await db.agent.create({data:{name:'Affiliate',email:'affiliate@example.com',agentCode:'DROPES-TEST',passwordHash:'not-a-login'}});
+ const first=await createCheckout(db,input,'test-checkout-key-000001',agent.id,catalog);
+ const retry=await createCheckout(db,input,'test-checkout-key-000001',agent.id,catalog);
+ assert.equal(first.orderId,retry.orderId);assert.equal(first.total,39.90);assert.equal(first.commissionEarned,0);
+ assert.equal(await db.order.count(),1);
+ await assert.rejects(createCheckout(db,{...input,items:[{id:'sku',quantity:1}]},'test-checkout-key-000001',agent.id,catalog));
+ const order=await db.order.findUnique({where:{id:first.orderId},include:{items:true}});
+ const delivery={orderId:order.id,eventKey:'delivery-event-1',evidence:'Carrier POD reference 12345',items:[{id:order.items[0].id,deliveredQuantity:1,returnedQuantity:0}]};
+ await assert.rejects(recordDelivery(db,delivery)); // a pending order cannot be delivered without reconciliation
+ await db.order.update({where:{id:order.id},data:{status:'confirmed',partnerOrderId:'provider-123'}});
+ assert.equal((await commissionBalance(db,agent.id)).totalEarned,0);
+ await assert.rejects(recordPayout(db,{agentId:agent.id,payoutKey:'payout-unearned-001',reference:'transfer-0001',amount:1}));
+ const result=await recordDelivery(db,delivery);assert.equal(result.status,'partially_delivered');assert.equal(result.commissionEarned,2);
+ assert.equal((await recordDelivery(db,delivery)).replayed,true);
+ assert.equal((await commissionBalance(db,agent.id)).totalEarned,2);
+ await assert.rejects(recordDelivery(db,{...delivery,evidence:'different evidence'}));
+ await assert.rejects(recordDelivery(db,{...delivery,eventKey:'bad-event-1',items:[{id:order.items[0].id,deliveredQuantity:3,returnedQuantity:0}]}));
+ const payout={agentId:agent.id,payoutKey:'payout-earned-001',reference:'transfer-0002',amount:2};
+ await recordPayout(db,payout);assert.equal((await recordPayout(db,payout)).replayed,true);
+ await assert.rejects(recordPayout(db,{...payout,payoutKey:'payout-excess-001',amount:0.01}));
+ await recordDelivery(db,{...delivery,eventKey:'return-event-1',items:[{id:order.items[0].id,deliveredQuantity:1,returnedQuantity:1}]});
+ assert.equal((await commissionBalance(db,agent.id)).available,0);
+ assert.equal(await db.deliveryEvent.count(),2);
+ assert.equal((await commissionBalance(db,agent.id)).adjustmentDue,2);
+ assert.equal(await db.agentPayout.count(),1);
+ await db.$disconnect();
+});

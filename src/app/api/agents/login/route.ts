@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { signSession } from "@/lib/auth-token";
 import { db } from "@/lib/db";
 import { AGENT_TOKEN_COOKIE, verifyPassword } from "@/lib/dropea-server";
 import { cookies } from "next/headers";
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
   }
   const { email, password } = body ?? {};
-  if (!email || !password) {
+  if (typeof email !== "string" || typeof password !== "string" || email.length > 254 || password.length > 128 || !email || !password) {
     return NextResponse.json(
       { ok: false, error: "Email and password required" },
       { status: 400 }
@@ -36,16 +37,17 @@ export async function POST(req: Request) {
       { status: 401 }
     );
   }
-  if (agent.status === "blocked") {
+  if (agent.status !== "active") {
     return NextResponse.json(
       { ok: false, error: "Account blocked. Contact support." },
       { status: 403 }
     );
   }
 
-  // Set httpOnly cookie storing the agent id (stateless token)
+  // Signed, expiring session; raw agent IDs are never credentials.
+  if ((process.env.SESSION_SECRET || "").length < 32) return NextResponse.json({ok:false,error:"Inicio de sesión temporalmente no disponible"},{status:503});
   const store = await cookies();
-  store.set(AGENT_TOKEN_COOKIE, agent.id, {
+  store.set(AGENT_TOKEN_COOKIE, signSession(agent.id, process.env.SESSION_SECRET!), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

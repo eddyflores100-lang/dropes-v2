@@ -97,7 +97,7 @@ export default function RegistroPage() {
         fontFamily: "Inter, system-ui, sans-serif",
         display: "flex",
         flexDirection: "column",
-        minHeight: "100vh",
+
       }}
     >
       <TopBar />
@@ -286,7 +286,7 @@ export default function RegistroPage() {
                 <input
                   required
                   type="password"
-                  minLength={6}
+                  minLength={10}
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   style={inputStyle}

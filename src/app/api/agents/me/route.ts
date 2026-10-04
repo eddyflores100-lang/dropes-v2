@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { commissionBalance } from "@/lib/order-service";
 import { db } from "@/lib/db";
 import { cookies } from "next/headers";
 import { AGENT_TOKEN_COOKIE, getCurrentAgent } from "@/lib/dropea-server";
@@ -19,7 +20,7 @@ export async function GET() {
   const [clicks, conversions, orders, leads, pendingPayouts, recentClicks] =
     await Promise.all([
       db.agentClick.count({ where: { agentId: agent.id } }),
-      db.order.count({ where: { agentId: agent.id, status: { in: ["confirmed", "synced"] } } }),
+      db.order.count({ where: { agentId: agent.id, status: { in: ["delivered", "partially_delivered"] } } }),
       db.order.findMany({
         where: { agentId: agent.id },
         orderBy: { createdAt: "desc" },
@@ -39,6 +40,7 @@ export async function GET() {
       }),
     ]);
 
+  const balance = await commissionBalance(db, agent.id);
   return NextResponse.json({
     ok: true,
     agent: {
@@ -58,11 +60,11 @@ export async function GET() {
       conversionRate: clicks > 0 ? Number((conversions / clicks).toFixed(4)) : 0,
       orders: orders.length,
       leads,
-      totalEarned: agent.totalEarned,
+      ...balance,
       pendingPayout: pendingPayouts._sum.amount ?? 0,
       referralLink: `/?ref=${agent.agentCode}`,
     },
-    recentOrders: orders,
+    recentOrders: orders.map(o => ({id:o.id,status:o.status,total:o.total,commissionEarned:o.commissionEarned,createdAt:o.createdAt,items:o.items.map(i=>({name:i.name,quantity:i.quantity,priceNow:i.priceNow,deliveredQuantity:i.deliveredQuantity}))})),
   });
 }
 

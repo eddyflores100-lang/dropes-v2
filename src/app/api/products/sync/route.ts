@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authorizedAdmin } from "@/lib/auth-token";
 import { db } from "@/lib/db";
 import fs from "node:fs";
 import path from "node:path";
@@ -14,20 +15,9 @@ export const dynamic = "force-dynamic";
 
 const PRODUCTS_PATH = path.join(process.cwd(), "src", "data", "products.json");
 
-function checkAuth(req: Request) {
-  const auth = req.headers.get("authorization") || "";
-  const expected = `Bearer ${process.env.CRON_SECRET}`;
-  if (!process.env.CRON_SECRET) {
-    return { ok: false, error: "CRON_SECRET not configured", status: 500 };
-  }
-  if (auth !== expected) {
-    return { ok: false, error: "Unauthorized", status: 401 };
-  }
-  return { ok: true };
-}
-
 // ─── GET /api/products/sync → sync status ──────────────────────────────
-export async function GET() {
+export async function GET(req: Request) {
+  if(!authorizedAdmin(req))return NextResponse.json({ok:false},{status:401});
   let catalogCount = 0;
   let lastModified: string | null = null;
   try {
@@ -59,13 +49,7 @@ export async function GET() {
 
 // ─── POST /api/products/sync → sync catalog from Dropea v1 API ─────────
 export async function POST(req: Request) {
-  const auth = checkAuth(req);
-  if (!auth.ok) {
-    return NextResponse.json(
-      { ok: false, error: auth.error },
-      { status: auth.status }
-    );
-  }
+  if(!authorizedAdmin(req))return NextResponse.json({ok:false},{status:401});
 
   const key = process.env.DROPEA_V1_API_KEY;
   const shopId = process.env.DROPEA_SHOP_ID;
@@ -126,7 +110,7 @@ export async function POST(req: Request) {
   const mapped: Product[] = upstream.map((p: any, idx: number) => {
     const cost = parsePriceNumber(p.cost ?? p.price ?? p.original_cost);
     const sellPrice = calculateMarginPrice(cost);
-    const was = sellPrice * 1.35; // pretend "was" price 35% higher
+    const was = sellPrice; // No invented discount history.
     const profit = sellPrice - cost;
     return {
       id: String(p.id ?? p._id ?? idx),
@@ -139,8 +123,8 @@ export async function POST(req: Request) {
       image: String(
         p.image ?? p.imageUrl ?? p.image_url ?? "https://api.dropea.com/placeholder/product-file"
       ),
-      stars: String(p.stars ?? p.rating ?? "4.7"),
-      reviews: String(p.reviews ?? `${Math.floor(Math.random() * 500) + 50} opiniones`),
+      stars: String(p.stars ?? p.rating ?? ""),
+      reviews: String(p.reviews ?? ""),
       category: (p.category ?? "Tecnología") as Product["category"],
       tag: (p.tag ?? "") as Product["tag"],
       tag2: p.tag2,
@@ -149,32 +133,6 @@ export async function POST(req: Request) {
     };
   });
 
-  // Backup current catalog
-  try {
-    if (fs.existsSync(PRODUCTS_PATH)) {
-      fs.copyFileSync(PRODUCTS_PATH, `${PRODUCTS_PATH}.bak`);
-    }
-  } catch {}
-
-  // Write the new catalog
-  fs.writeFileSync(PRODUCTS_PATH, JSON.stringify(mapped, null, 2), "utf8");
-
-  // Persist a snapshot in DB so the admin panel can show last sync (best-effort)
-  // (There's no Catalog model; we return the data directly.)
-  return NextResponse.json({
-    ok: true,
-    synced: mapped.length,
-    pricing: {
-      marginFactor: 0.85,
-      formula: "sellPrice = round2(cost / (1 - margin))",
-      samples: mapped.slice(0, 3).map((p) => ({
-        name: p.name,
-        cost: p.original_cost,
-        sell: p.priceNow,
-        profit: p.profit,
-      })),
-    },
-    backupPath: `${PRODUCTS_PATH}.bak`,
-    timestamp: new Date().toISOString(),
-  });
+  // Serverless deployments are immutable. Review and deploy the exported catalog.
+  return NextResponse.json({ok:true,synced:mapped.length,catalog:mapped,message:"Revisa el catálogo y publícalo con un nuevo despliegue. No se ha modificado la tienda."});
 }
