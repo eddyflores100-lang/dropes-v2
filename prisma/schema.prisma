@@ -1,6 +1,5 @@
 // Prisma schema for DROPES agent platform.
-// Note: original spec mentioned PostgreSQL, but the dev sandbox only ships
-// SQLite (db/custom.db). We use SQLite here so all routes work locally.
+// PostgreSQL is the production database. Delivery evidence controls commission eligibility.
 
 generator client {
   provider = "prisma-client-js"
@@ -13,6 +12,10 @@ datasource db {
 
 model Order {
   id              String      @id @default(cuid())
+  checkoutKey     String? @unique
+  requestHash     String?
+  version         Int @default(0)
+  deliveryEvents  DeliveryEvent[]
   partnerOrderId  String?
   customerId      String?
   customerName    String
@@ -25,7 +28,7 @@ model Order {
   items           OrderItem[]
   total           Float
   paymentMethod   String      @default("cod")
-  status          String      @default("pending") // pending | confirmed | failed | synced | cancelled
+  status          String      @default("pending") // pending | syncing | confirmed | review_required | partially_delivered | delivered | returned | cancelled
   apiSource       String?     // dropea-v1 | dropea-v2 | local
   agentCode       String?
   agentId         String?
@@ -53,6 +56,8 @@ model OrderItem {
   profit    Float?
   image     String?
   quantity  Int
+  deliveredQuantity Int @default(0)
+  returnedQuantity Int @default(0)
   createdAt DateTime @default(now())
 
   @@index([orderId])
@@ -68,6 +73,7 @@ model Agent {
   passwordHash String
   socialMedia  String?
   status       String   @default("active") // active | blocked | pending
+  payoutVersion Int @default(0)
   clicks       Int      @default(0)
   conversions  Int      @default(0)
   totalEarned  Float    @default(0)
@@ -143,6 +149,7 @@ model AgentPromotion {
 }
 
 model AgentPayout {
+  payoutKey String? @unique
   id        String   @id @default(cuid())
   agentId   String
   agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
@@ -175,4 +182,15 @@ model Post {
   authorId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model DeliveryEvent {
+  id String @id @default(cuid())
+  eventKey String @unique
+  orderId String
+  order Order @relation(fields: [orderId], references: [id])
+  evidence String
+  payload String
+  createdAt DateTime @default(now())
+  @@index([orderId])
 }

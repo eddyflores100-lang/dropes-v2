@@ -13,7 +13,7 @@ const CATS: Array<{
   name: Category;
   icon: typeof Smartphone;
   bg: string;
-  hover: string;
+  hover?: string;
   iconBg: string;
   count: string;
   rotate: string;

@@ -50,7 +50,7 @@ export default function AdminProductosPage() {
     const revenue = filtered.reduce((acc, p) => acc + parsePrice(p.priceNow), 0);
     const cost = filtered.reduce((acc, p) => acc + parsePrice(p.original_cost), 0);
     const profit = filtered.reduce((acc, p) => acc + parsePrice(p.profit), 0);
-    const commission = profit * 0.1;
+    const commission = revenue * 0.1;
     const avgMargin =
       revenue > 0 ? (profit / revenue) * 100 : 0;
     return { revenue, cost, profit, commission, avgMargin };
@@ -59,19 +59,21 @@ export default function AdminProductosPage() {
   const triggerSync = async () => {
     setSyncing(true);
     try {
-      const secret = process.env.NEXT_PUBLIC_CRON_SECRET || "dropes_cron_secret_0000";
+
       const res = await fetch("/api/products/sync", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${secret}`,
+
         },
       });
       const json = await res.json();
       if (json.ok) {
-        alert(`Catálogo sincronizado: ${json.synced} productos`);
+        const url=URL.createObjectURL(new Blob([JSON.stringify(json.catalog,null,2)],{type:"application/json"}));
+        const a=document.createElement("a");a.href=url;a.download="products-reviewed.json";a.click();URL.revokeObjectURL(url);
+        alert(json.message);
         // Force reload of the JSON module (best-effort via reload)
-        window.location.reload();
+
       } else {
         alert("Error: " + json.error);
       }
@@ -146,7 +148,7 @@ export default function AdminProductosPage() {
               opacity: syncing ? 0.6 : 1,
             }}
           >
-            {syncing ? "SINCRONIZANDO…" : "↻ SYNC DESDE DROPEA V1"}
+            {syncing ? "SINCRONIZANDO…" : "EXPORTAR CATÁLOGO PARA REVISIÓN"}
           </button>
         </div>
 
@@ -224,7 +226,7 @@ export default function AdminProductosPage() {
             📐 Fórmula de precio (85% margen):
           </strong>{" "}
           sellPrice = round2(cost / (1 - 0.85)) = cost × 6.667 · profit = sellPrice - cost ·
-          commission10% = profit × 0.10
+          commission10% = valor entregado × 0.10
         </div>
 
         {/* Filters */}
@@ -308,7 +310,7 @@ export default function AdminProductosPage() {
                 const sell = parsePrice(p.priceNow);
                 const profit = parsePrice(p.profit);
                 const margin = sell > 0 ? (profit / sell) * 100 : 0;
-                const commission = profit * 0.1;
+                const commission = sell * 0.1;
                 return (
                   <tr key={p.id} style={{ borderBottom: "1px solid #2a2a2a" }}>
                     <td style={{ padding: "8px 10px", fontFamily: "Space Grotesk, monospace", fontSize: 11, color: "#FFDE00" }}>

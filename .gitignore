@@ -54,3 +54,6 @@ server.log
 /skills/.env
 .env
 .env.local
+
+.test-runtime-*
+!.env.example

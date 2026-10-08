@@ -12,12 +12,12 @@ const ALL_PRODUCTS = productsData as Product[];
 export async function GET() {
   // Compute aggregate metrics over catalog
   const totalProfit = ALL_PRODUCTS.reduce(
-    (acc, p) => acc + parsePriceNumber(p.profit),
+    (acc, p) => acc + parsePriceNumber(p.priceNow),
     0
   );
   const avgCommission = totalProfit / ALL_PRODUCTS.length * COMMISSION_RATE;
   const top = [...ALL_PRODUCTS]
-    .sort((a, b) => parsePriceNumber(b.profit) - parsePriceNumber(a.profit))
+    .sort((a, b) => parsePriceNumber(b.priceNow) - parsePriceNumber(a.priceNow))
     .slice(0, 5);
   const categories = Array.from(new Set(ALL_PRODUCTS.map((p) => p.category)));
 
@@ -27,7 +27,7 @@ export async function GET() {
       title: "DROPES Affiliate Program",
       tagline: "Gana dinero compartiendo productos virales",
       description:
-        "Comparte productos virales con tu audiencia. Te pagan 10% de comisión por cada venta confirmada. Sin inventario, sin atención al cliente.",
+        "Comparte productos virales con tu audiencia. Te pagan 10% de comisión por cada entrega verificada. Sin inventario, sin atención al cliente.",
       type: "affiliate-dropshipping",
       currency: "EUR",
       countries: ["ES", "PT"],
@@ -35,7 +35,7 @@ export async function GET() {
     commission: {
       rate: COMMISSION_RATE,
       averagePerSale: Math.round(avgCommission * 100) / 100,
-      maxPerSale: parsePriceNumber(top[0]?.profit ?? "0") * COMMISSION_RATE,
+      maxPerSale: parsePriceNumber(top[0]?.priceNow ?? "0") * COMMISSION_RATE,
       payoutSchedule: "monthly",
       cookieWindowDays: 30,
     },
@@ -47,23 +47,23 @@ export async function GET() {
         name: p.name,
         priceNow: p.priceNow,
         profit: p.profit,
-        commission: Math.round(parsePriceNumber(p.profit) * COMMISSION_RATE * 100) / 100,
+        commission: Math.round(parsePriceNumber(p.priceNow) * COMMISSION_RATE * 100) / 100,
         image: p.image,
         tag: p.tag,
       })),
     },
     market: {
       audience: "ES/PT — Instagram, TikTok, WhatsApp, Telegram",
-      paymentMethods: ["contra reembolso", "tarjeta"],
-      shippingWindow: "24-48h",
-      averageConversionRate: 0.025,
-      trustSignals: ["30 días de prueba", "Contra reembolso", "Garantía europea"],
+      paymentMethods: ["contra reembolso"],
+      shippingWindow: "Se confirma antes del envío",
+      commissionEligibility: "verified_delivery_only",
+      trustSignals: ["Contra reembolso", "Referencia de pedido"],
     },
     connection: {
       protocol: "MCP",
       transport: "JSON-RPC 2.0 over HTTP",
       endpoint: "/api/mcp",
-      auth: "agentCode in tool args",
+      auth: "signed_session_cookie",
       tools: [
         "discover_opportunity",
         "register_agent",
@@ -83,14 +83,14 @@ export async function GET() {
       integrationV1: {
         endpoint: "https://api.dropea.com/api/v1/order",
         auth: "X-API-Key",
-        status: "available",
+        status: "requires_configuration",
       },
       integrationV2: {
         endpoint: "https://api.dropea.com/graphql/dropshippers",
         auth: "Bearer JWT",
-        status: "available",
+        status: "requires_configuration",
       },
-      localFallback: { engine: "sqlite", status: "active" },
+      orderStorage: { engine: "postgresql", status: "requires_configuration" },
     },
     signup: {
       url: "/agentes/registro",

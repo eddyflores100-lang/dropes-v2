@@ -2,6 +2,8 @@
 
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { randomInt } from "node:crypto";
+import { verifySession } from "./auth-token";
 import { cookies } from "next/headers";
 
 export const DROPEA_V1_URL = "https://api.dropea.com/api/v1/order";
@@ -34,7 +36,7 @@ export function generateAgentCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let out = "";
   for (let i = 0; i < 4; i++) {
-    out += chars[Math.floor(Math.random() * chars.length)];
+    out += chars[randomInt(chars.length)];
   }
   return `DROPES-${out}`;
 }
@@ -55,8 +57,10 @@ export async function getCurrentAgent() {
   const token = (await cookies()).get(AGENT_TOKEN_COOKIE)?.value;
   if (!token) return null;
   try {
-    const agent = await db.agent.findUnique({ where: { id: token } });
-    return agent;
+    const id = verifySession(token, process.env.SESSION_SECRET || "");
+    if (!id) return null;
+    const agent = await db.agent.findUnique({ where: { id } });
+    return agent?.status === "active" ? agent : null;
   } catch {
     return null;
   }
@@ -70,7 +74,7 @@ export async function getAgentRefFromCookie(): Promise<string | null> {
 
 export async function resolveAgentByCode(code: string | null) {
   if (!code) return null;
-  return db.agent.findUnique({ where: { agentCode: code } });
+  return db.agent.findFirst({ where: { agentCode: code, status: "active" } });
 }
 
 // ─── Dropea v1 (REST, X-API-Key) ──────────────────────────────────────
@@ -90,7 +94,7 @@ export async function dropeaV1Status(): Promise<{
         "X-API-Key": key,
         "Content-Type": "application/json",
       },
-      // signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(10000),
     });
     return { ok: res.ok, latency: Date.now() - start };
   } catch (err: any) {
@@ -112,6 +116,7 @@ export async function dropeaV1CreateOrder(payload: unknown): Promise<{
   try {
     const res = await fetch(DROPEA_V1_URL, {
       method: "POST",
+      signal: AbortSignal.timeout(15000),
       headers: {
         "X-API-Key": key,
         "Content-Type": "application/json",
@@ -125,7 +130,7 @@ export async function dropeaV1CreateOrder(payload: unknown): Promise<{
     }
     const json: any = await res.json();
     const orderId = json?.id ?? json?.orderId ?? json?.data?.id;
-    return { ok: true, orderId: orderId ? String(orderId) : undefined, raw: json };
+    return orderId ? { ok: true, orderId: String(orderId), raw: json } : { ok: false, error: "Missing provider order ID; reconcile before retry" };
   } catch (err: any) {
     return { ok: false, error: err?.message ?? "fetch failed" };
   }
@@ -144,6 +149,7 @@ export async function dropeaV2Status(): Promise<{
   try {
     const res = await fetch(DROPEA_V2_GRAPHQL_URL, {
       method: "POST",
+      signal: AbortSignal.timeout(15000),
       headers: {
         Authorization: `Bearer ${jwt}`,
         "Content-Type": "application/json",
@@ -177,6 +183,7 @@ export async function dropeaV2CreateOrder(payload: unknown): Promise<{
   try {
     const res = await fetch(DROPEA_V2_GRAPHQL_URL, {
       method: "POST",
+      signal: AbortSignal.timeout(15000),
       headers: {
         Authorization: `Bearer ${jwt}`,
         "Content-Type": "application/json",
@@ -196,7 +203,7 @@ export async function dropeaV2CreateOrder(payload: unknown): Promise<{
     }
     const data = json?.data?.createOrder;
     const orderId = data?.id ?? data?.reference;
-    return { ok: true, orderId: orderId ? String(orderId) : undefined, raw: json };
+    return orderId ? { ok: true, orderId: String(orderId), raw: json } : { ok: false, error: "Missing provider order ID; reconcile before retry" };
   } catch (err: any) {
     return { ok: false, error: err?.message ?? "fetch failed" };
   }

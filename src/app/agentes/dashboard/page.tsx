@@ -225,7 +225,7 @@ function DashboardInner() {
           <StatCard label="CLICKS" value={stats?.clicks ?? 0} sub={`Esta semana: ${stats?.clicksThisWeek ?? 0}`} />
           <StatCard label="CONVERSIONES" value={stats?.conversions ?? 0} />
           <StatCard label="LEADS" value={stats?.leads ?? 0} />
-          <StatCard label="TOTAL GANADO" value={`€${(stats?.totalEarned ?? 0).toFixed(2)}`} accent="yellow" />
+          <StatCard label="COMISIÓN POR ENTREGAS" value={`€${(stats?.totalEarned ?? 0).toFixed(2)}`} accent="yellow" />
           <StatCard label="PENDIENTE DE COBRO" value={`€${(stats?.pendingPayout ?? 0).toFixed(2)}`} accent="red" />
           <StatCard
             label="CONVERSIÓN"

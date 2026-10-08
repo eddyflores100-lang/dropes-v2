@@ -26,9 +26,11 @@ interface Order {
   }>;
 }
 
-const STATUSES = ["pending", "confirmed", "failed", "synced", "cancelled"];
+const STATUSES = ["confirmed", "cancelled"];
 
 export default function AdminPedidosPage() {
+  const [page,setPage]=useState(0);
+  const [total,setTotal]=useState(0);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
@@ -37,17 +39,18 @@ export default function AdminPedidosPage() {
 
   const load = () => {
     setLoading(true);
-    fetch("/api/orders", { cache: "no-store" })
+    fetch(`/api/orders?limit=100&offset=${page*100}&q=${encodeURIComponent(filter)}&status=${encodeURIComponent(statusFilter)}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((json) => {
-        if (json.ok) setOrders(json.orders);
+        if (json.ok) {setOrders(json.orders);setTotal(json.total);}
       })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    const timer=setTimeout(load,250);
+    return ()=>clearTimeout(timer);
+  }, [page,filter,statusFilter]);
 
   const filtered = useMemo(() => {
     return orders.filter((o) => {
@@ -64,19 +67,24 @@ export default function AdminPedidosPage() {
   }, [orders, filter, statusFilter]);
 
   const updateStatus = async (id: string, status: string) => {
+    const partnerOrderId = status === "confirmed" ? window.prompt("Referencia del proveedor después de verificar el pedido") : undefined;
+    if(status === "confirmed" && !partnerOrderId) return;
+    const current=orders.find(o=>o.id===id);
+    const reconciliationEvidence=current?.status==="syncing"?window.prompt("Después de 15 minutos, comprueba el pedido con el proveedor y registra la evidencia (mínimo 10 caracteres). Si cancelas, verifica que no exista un envío activo."):undefined;
+    if(current?.status==="syncing"&&!reconciliationEvidence)return;
     setUpdatingId(id);
     try {
-      const res = await fetch("/api/orders", {
+      const res = await fetch(`/api/orders?limit=100&offset=${page*100}&q=${encodeURIComponent(filter)}&status=${encodeURIComponent(statusFilter)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status }),
+        body: JSON.stringify({ id, status, partnerOrderId, reconciliationEvidence }),
       });
       const json = await res.json();
       if (json.ok) {
         setOrders((prev) =>
           prev.map((o) => (o.id === id ? { ...o, status } : o))
         );
-      }
+      } else { window.alert(json.error || "No se pudo cambiar el estado"); }
     } finally {
       setUpdatingId(null);
     }
@@ -196,7 +204,7 @@ export default function AdminPedidosPage() {
         >
           <input
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={(e) => {setFilter(e.target.value);setPage(0)}}
             placeholder="BUSCAR POR CLIENTE, EMAIL, AGENTE, ID…"
             style={{
               flex: 1,
@@ -213,7 +221,7 @@ export default function AdminPedidosPage() {
           />
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {setStatusFilter(e.target.value);setPage(0)}}
             style={{
               background: "#141414",
               color: "#FAF9F5",
@@ -368,6 +376,7 @@ export default function AdminPedidosPage() {
       >
         DROPES · Admin panel · {filtered.length} pedidos
       </footer>
+      <nav aria-label="Páginas de pedidos" style={{padding:24,display:"flex",gap:20}}><button disabled={page===0} onClick={()=>setPage(page-1)}>Anterior</button><span>Página {page+1} · {total} pedidos · Totales y exportación de esta página</span><button disabled={(page+1)*100>=total} onClick={()=>setPage(page+1)}>Siguiente</button></nav>
     </main>
   );
 }

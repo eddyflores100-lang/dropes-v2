@@ -3,9 +3,9 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: "DROPEA® — Bold Editorial High-Impact Shop",
+  title: "DROPES — Hogar, cocina y accesorios",
   description:
-    "Tienda de productos virales con envío gratis 24/48h a España y Portugal. Pago contra reembolso disponible. 30 días de prueba garantizados.",
+    "Explora productos para tu día a día. Solicita tu pedido contra reembolso y confirma disponibilidad y entrega con DROPES.",
 };
 
 export default function RootLayout({
